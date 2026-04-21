@@ -58,3 +58,8 @@ export const fetchRobotsForFolder = async (folderId) => {
     const response = await axios.get(`${API_URL}/uipath/robots/${folderId}`);
     return response.data;
 };
+
+export const startUiPathJob = async (folderId, releaseKey, robotIds) => {
+    const response = await axios.post(`${API_URL}/uipath/start-job`, { folderId, releaseKey, robotIds });
+    return response.data;
+};

@@ -361,6 +361,56 @@ app.get('/api/uipath/robots/:folderId', authenticateToken, (req, res) => {
     });
 });
 
+// POST start job
+app.post('/api/uipath/start-job', authenticateToken, (req, res) => {
+    const { folderId, releaseKey, robotIds } = req.body;
+    
+    if (!folderId || !releaseKey || !robotIds || robotIds.length === 0) {
+        return res.status(400).json({ error: 'Klasör ID, Süreç Anahtarı ve en az bir Robot seçimi gereklidir.' });
+    }
+
+    db.query('SELECT * FROM config_uipath WHERE user_id = ?', [req.user.id], async (err, results) => {
+        if (err) return res.status(500).json(err);
+        if (results.length === 0) return res.status(404).json({ error: 'UiPath konfigürasyonu bulunamadı.' });
+
+        const config = results[0];
+        try {
+            const token = await getUiPathToken(config);
+            const baseUrl = getUiPathODataUrl(config);
+            const targetUrl = `${baseUrl}/Jobs/UiPath.Server.Configuration.OData.StartJobs`;
+
+            const payload = {
+                startInfo: {
+                    ReleaseKey: releaseKey,
+                    Strategy: "Specific",
+                    RobotIds: robotIds,
+                    JobsCount: 0
+                }
+            };
+
+            const response = await fetch(targetUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    ...(config.deployment_type !== 'cloud' ? { 'X-UIPATH-TenantName': config.tenant } : {}),
+                    'X-UIPATH-OrganizationUnitId': folderId.toString(),
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`StartJobs API hatası: ${text}`);
+            }
+            const data = await response.json();
+            res.json({ message: 'Süreç başarıyla başlatıldı.', data });
+        } catch (apiErr) {
+            res.status(400).json({ error: apiErr.message });
+        }
+    });
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

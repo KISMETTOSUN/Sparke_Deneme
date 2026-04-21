@@ -323,3 +323,45 @@ body {
 }
 
 .login-btn { width: 100%; justify-content: center; padding: 14px; font-size: 1rem; margin-top: 8px; }
+
+/* Configuration Tabs Styles */
+.configuration-container { width: 100%; }
+
+.tab-menu {
+    display: flex; gap: 16px; margin-bottom: 24px;
+    border-bottom: 1px solid var(--border); padding-bottom: 1px;
+}
+
+.tab-button {
+    display: flex; align-items: center; gap: 8px;
+    background: none; border: none; padding: 12px 16px;
+    font-size: 0.95rem; font-weight: 500; color: var(--text-muted);
+    cursor: pointer; border-bottom: 2px solid transparent;
+    transition: var(--transition);
+}
+
+.tab-button:hover { color: var(--text-main); }
+.tab-button.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+.form-layout {
+    display: flex; flex-direction: column; gap: 16px;
+    max-width: 600px; margin-top: 24px;
+}
+
+.form-control {
+    width: 100%; padding: 12px 16px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--bg);
+    font-size: 0.9rem; transition: var(--transition); box-sizing: border-box;
+}
+
+.form-control:focus {
+    outline: none; border-color: var(--primary); background: var(--white);
+    box-shadow: 0 0 0 4px rgba(237, 94, 118, 0.1);
+}
+
+.fade-in { animation: fadeIn 0.3s ease-in-out; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

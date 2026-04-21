@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Bot, PlayCircle, Calendar, 
   Zap, Bell, Menu, X, Activity, Play, 
-  CheckCircle, XCircle, Loader2, LogOut 
+  CheckCircle, XCircle, Loader2, LogOut,
+  Settings, Link
 } from 'lucide-react';
 import { fetchRobots, fetchActivity, triggerRobot } from './api';
 import Login from './Login';
+import ConfigurationView from './ConfigurationView';
 import './App.css';
 
 function App() {
@@ -15,6 +17,7 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [triggering, setTriggering] = useState(null);
   const [initialized, setInitialized] = useState(false);
+  const [currentView, setCurrentView] = useState('dashboard');
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
@@ -89,8 +92,20 @@ function App() {
           </div>
         </div>
         <ul className="nav-links">
-          <li className="active">
-            <a href="#"><LayoutDashboard size={20} /><span>Kontrol Paneli</span></a>
+          <li className={currentView === 'dashboard' ? 'active' : ''}>
+            <a href="#" onClick={(e) => { e.preventDefault(); setCurrentView('dashboard'); }}>
+              <LayoutDashboard size={20} /><span>Kontrol Paneli</span>
+            </a>
+          </li>
+          <li className={currentView === 'configuration' ? 'active' : ''}>
+            <a href="#" onClick={(e) => { e.preventDefault(); setCurrentView('configuration'); }}>
+              <Settings size={20} /><span>Konfigürasyon</span>
+            </a>
+          </li>
+          <li className={currentView === 'connections' ? 'active' : ''}>
+            <a href="#" onClick={(e) => { e.preventDefault(); setCurrentView('connections'); }}>
+              <Link size={20} /><span>Bağlantılar</span>
+            </a>
           </li>
         </ul>
         <div className="sidebar-footer">
@@ -126,87 +141,100 @@ function App() {
         </header>
 
         <main className="content-area">
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-header">
-                <span>Toplam Robot</span> <Activity size={18} />
-              </div>
-              <div className="stat-value">{stats.total}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-header">
-                <span>Çalışan</span> <Play size={18} />
-              </div>
-              <div className="stat-value">{stats.running}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-header">
-                <span>Başarılı (24s)</span> <CheckCircle size={18} />
-              </div>
-              <div className="stat-value highlight">{stats.success}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-header">
-                <span>Başarısız (24s)</span> <XCircle size={18} />
-              </div>
-              <div className="stat-value">{stats.failed}</div>
-            </div>
-          </div>
-
-          <div className="dashboard-sections">
-            <div className="section-card">
-              <div className="section-header">
-                <h2>Hızlı Tetikleme</h2>
-                <p>Sık kullanılan robotlar</p>
-              </div>
-              <div className="list-container">
-                {robots.map(robot => (
-                  <div key={robot.id} className="list-item">
-                    <div className="item-info">
-                      <h3>{robot.name} {robot.user_id ? '👤' : ''}</h3>
-                      <p>Son çalışma: {robot.last_run || 'Hiç'}</p>
-                    </div>
-                    <button 
-                      className="btn btn-primary"
-                      disabled={triggering === robot.id || robot.status === 'running'}
-                      onClick={() => handleTrigger(robot.id)}
-                    >
-                      {triggering === robot.id ? (
-                        <><Loader2 className="spin" size={14} /> Başlatılıyor...</>
-                      ) : (
-                        <><Play size={14} /> Tetikle</>
-                      )}
-                    </button>
+          {currentView === 'dashboard' && (
+            <>
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <div className="stat-header">
+                    <span>Toplam Robot</span> <Activity size={18} />
                   </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="section-card">
-              <div className="section-header">
-                <h2>Son Aktiviteler</h2>
-                <p>Tüm filodaki son hareketler</p>
-              </div>
-              <div className="list-container">
-                {activity.map(log => (
-                  <div key={log.id} className="activity-item">
-                    <div className={`activity-icon ${log.status.toLowerCase()}`}>
-                      {log.status === 'Success' && <CheckCircle size={20} />}
-                      {log.status === 'Failed' && <XCircle size={20} />}
-                      {log.status === 'Running' && <Activity size={20} className="pulse" />}
-                    </div>
-                    <div className="activity-info">
-                      <h3>{log.robot_name}</h3>
-                      <p>{log.timestamp} • {log.duration}</p>
-                    </div>
-                    <span className={`status-badge ${log.status.toLowerCase()}`}>
-                      {log.status}
-                    </span>
+                  <div className="stat-value">{stats.total}</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-header">
+                    <span>Çalışan</span> <Play size={18} />
                   </div>
-                ))}
+                  <div className="stat-value">{stats.running}</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-header">
+                    <span>Başarılı (24s)</span> <CheckCircle size={18} />
+                  </div>
+                  <div className="stat-value highlight">{stats.success}</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-header">
+                    <span>Başarısız (24s)</span> <XCircle size={18} />
+                  </div>
+                  <div className="stat-value">{stats.failed}</div>
+                </div>
               </div>
+
+              <div className="dashboard-sections">
+                <div className="section-card">
+                  <div className="section-header">
+                    <h2>Hızlı Tetikleme</h2>
+                    <p>Sık kullanılan robotlar</p>
+                  </div>
+                  <div className="list-container">
+                    {robots.map(robot => (
+                      <div key={robot.id} className="list-item">
+                        <div className="item-info">
+                          <h3>{robot.name} {robot.user_id ? '👤' : ''}</h3>
+                          <p>Son çalışma: {robot.last_run || 'Hiç'}</p>
+                        </div>
+                        <button 
+                          className="btn btn-primary"
+                          disabled={triggering === robot.id || robot.status === 'running'}
+                          onClick={() => handleTrigger(robot.id)}
+                        >
+                          {triggering === robot.id ? (
+                            <><Loader2 className="spin" size={14} /> Başlatılıyor...</>
+                          ) : (
+                            <><Play size={14} /> Tetikle</>
+                          )}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="section-card">
+                  <div className="section-header">
+                    <h2>Son Aktiviteler</h2>
+                    <p>Tüm filodaki son hareketler</p>
+                  </div>
+                  <div className="list-container">
+                    {activity.map(log => (
+                      <div key={log.id} className="activity-item">
+                        <div className={`activity-icon ${log.status.toLowerCase()}`}>
+                          {log.status === 'Success' && <CheckCircle size={20} />}
+                          {log.status === 'Failed' && <XCircle size={20} />}
+                          {log.status === 'Running' && <Activity size={20} className="pulse" />}
+                        </div>
+                        <div className="activity-info">
+                          <h3>{log.robot_name}</h3>
+                          <p>{log.timestamp} • {log.duration}</p>
+                        </div>
+                        <span className={`status-badge ${log.status.toLowerCase()}`}>
+                          {log.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {currentView === 'configuration' && <ConfigurationView />}
+
+          {currentView === 'connections' && (
+            <div className="section-card fade-in">
+              <h2>Bağlantılar</h2>
+              <p className="text-muted">Dış sistem bağlantı ayarlarınız burada listelenecektir.</p>
             </div>
-          </div>
+          )}
         </main>
       </div>
     </div>

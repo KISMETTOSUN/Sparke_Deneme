@@ -137,22 +137,56 @@ app.get('/api/config/:type', authenticateToken, (req, res) => {
 });
 
 // POST config (UiPath)
-app.post('/api/config/uipath', authenticateToken, (req, res) => {
-    const { url, tenant, client_id, client_secret } = req.body;
+app.post('/api/config/uipath', authenticateToken, async (req, res) => {
+    const { url, tenant, client_id, client_secret, deployment_type } = req.body;
+    
+    // --- UiPath Validation ---
+    try {
+        const cleanUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+        let identityUrl = '';
+        
+        if (deployment_type === 'cloud') {
+            identityUrl = 'https://cloud.uipath.com/identity_/connect/token';
+        } else {
+            // User explicitly chose On-Premise
+            identityUrl = `${cleanUrl}/identity/connect/token`;
+        }
+
+        const params = new URLSearchParams();
+        params.append('grant_type', 'client_credentials');
+        params.append('client_id', client_id);
+        params.append('client_secret', client_secret);
+
+        const response = await fetch(identityUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params
+        });
+
+        if (!response.ok) {
+            const errObj = await response.json().catch(() => ({}));
+            const lastError = errObj.error || response.statusText;
+            return res.status(400).json({ error: `UiPath Doğrulama Başarısız (${deployment_type}): Lütfen URL, Client ID ve Secret kontrol edin. (Detay: ${lastError})` });
+        }
+    } catch (err) {
+        return res.status(400).json({ error: `İletişim kurulamadı: ${err.message}` });
+    }
+    // --- Validation End ---
+
     let encryptedSecret = client_secret ? encrypt(client_secret) : '';
     const date = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
     db.query('SELECT id FROM config_uipath WHERE user_id = ?', [req.user.id], (err, results) => {
         if (err) return res.status(500).json(err);
         if (results.length > 0) {
-            db.query('UPDATE config_uipath SET url=?, tenant=?, client_id=?, client_secret=?, last_update=? WHERE user_id=?',
-            [url, tenant, client_id, encryptedSecret, date, req.user.id], (err) => {
+            db.query('UPDATE config_uipath SET url=?, tenant=?, client_id=?, client_secret=?, deployment_type=?, last_update=? WHERE user_id=?',
+            [url, tenant, client_id, encryptedSecret, deployment_type, date, req.user.id], (err) => {
                 if (err) return res.status(500).json(err);
                 res.json({ message: 'Updated', last_update: date });
             });
         } else {
-            db.query('INSERT INTO config_uipath (user_id, url, tenant, client_id, client_secret, last_update, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [req.user.id, url, tenant, client_id, encryptedSecret, date, date], (err) => {
+            db.query('INSERT INTO config_uipath (user_id, url, tenant, client_id, client_secret, deployment_type, last_update, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [req.user.id, url, tenant, client_id, encryptedSecret, deployment_type, date, date], (err) => {
                 if (err) return res.status(500).json(err);
                 res.json({ message: 'Inserted', last_update: date });
             });

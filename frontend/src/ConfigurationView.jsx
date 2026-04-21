@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Server, Database, Save, Loader2, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Settings, Server, Database, Save, Loader2, Clock, CheckCircle, AlertCircle, Globe, Layout } from 'lucide-react';
 import { fetchConfig, saveConfig } from './api';
 import './App.css';
 
@@ -12,7 +12,7 @@ function ConfigurationView() {
   const [formFeedback, setFormFeedback] = useState({ type: null, message: '' });
 
   const [uipathForm, setUipathForm] = useState({
-    url: '', tenant: '', client_id: '', client_secret: ''
+    url: '', tenant: '', client_id: '', client_secret: '', deployment_type: 'cloud'
   });
 
   const [seemeForm, setSeemeForm] = useState({
@@ -32,7 +32,8 @@ function ConfigurationView() {
           url: uipathData.url || '',
           tenant: uipathData.tenant || '',
           client_id: uipathData.client_id || '',
-          client_secret: uipathData.client_secret || ''
+          client_secret: uipathData.client_secret || '',
+          deployment_type: uipathData.deployment_type || 'cloud'
         });
         setLastUpdate(prev => ({ ...prev, uipath: uipathData.last_update }));
       }
@@ -63,7 +64,7 @@ function ConfigurationView() {
       if (activeTab === 'uipath') {
         const response = await saveConfig('uipath', uipathForm);
         setLastUpdate(prev => ({ ...prev, uipath: response.last_update }));
-        setFormFeedback({ type: 'success', message: 'UiPath konfigürasyonu başarıyla kaydedildi.' });
+        setFormFeedback({ type: 'success', message: 'UiPath konfigürasyonu başarıyla doğrulandı ve kaydedildi.' });
       } else {
         const response = await saveConfig('seeme', seemeForm);
         setLastUpdate(prev => ({ ...prev, seeme: response.last_update }));
@@ -130,11 +131,35 @@ function ConfigurationView() {
 
             <form className="form-layout" autoComplete="off" onSubmit={handleSave}>
               <div className="form-group">
+                <label>Dağıtım Türü</label>
+                <div style={{ display: 'flex', gap: '20px', marginTop: '8px', marginBottom: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: '500' }}>
+                    <input 
+                      type="radio" 
+                      name="deployment_type" 
+                      checked={uipathForm.deployment_type === 'cloud'} 
+                      onChange={() => setUipathForm({...uipathForm, deployment_type: 'cloud'})} 
+                    />
+                    Cloud
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: '500' }}>
+                    <input 
+                      type="radio" 
+                      name="deployment_type" 
+                      checked={uipathForm.deployment_type === 'onprem'} 
+                      onChange={() => setUipathForm({...uipathForm, deployment_type: 'onprem'})} 
+                    />
+                    On-Premise (Local)
+                  </label>
+                </div>
+              </div>
+
+              <div className="form-group">
                 <label>Orchestrator URL</label>
                 <input 
                   type="text" 
                   className="form-control" 
-                  placeholder="https://cloud.uipath.com/..." 
+                  placeholder={uipathForm.deployment_type === 'cloud' ? "https://cloud.uipath.com/organizasyon" : "https://uipath.sirketiniz.com"} 
                   autoComplete="new-string" 
                   value={uipathForm.url}
                   onChange={e => setUipathForm({...uipathForm, url: e.target.value})}
@@ -175,7 +200,7 @@ function ConfigurationView() {
               </div>
               <button type="submit" className="btn btn-primary" style={{marginTop: '16px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center'}} disabled={saving}>
                 {saving ? <Loader2 className="spin" size={16} /> : <Save size={16} />} 
-                {saving ? 'Kaydediliyor...' : 'Ayarları Kaydet'}
+                {saving ? 'Bağlantı Sınanıyor...' : 'Doğrula ve Kaydet'}
               </button>
             </form>
           </div>

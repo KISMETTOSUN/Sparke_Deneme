@@ -92,9 +92,6 @@ function App() {
           <li className="active">
             <a href="#"><LayoutDashboard size={20} /><span>Dashboard</span></a>
           </li>
-          <li><a href="#"><Bot size={20} /><span>Robots</span></a></li>
-          <li><a href="#"><PlayCircle size={20} /><span>Runs</span></a></li>
-          <li><a href="#"><Calendar size={20} /><span>Schedules</span></a></li>
         </ul>
         <div className="sidebar-footer">
           <button className="btn-logout" onClick={handleLogout}>

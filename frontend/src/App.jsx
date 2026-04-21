@@ -82,9 +82,6 @@ function App() {
       <div className="main-wrapper">
         <header className="top-header">
           <div className="header-left">
-            <button className="mobile-toggle" onClick={() => setIsSidebarOpen(true)}>
-              <Menu size={24} />
-            </button>
             <div className="title-group">
               <h1>Dashboard</h1>
               <p>Overview of your robot fleet.</p>

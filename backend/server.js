@@ -313,7 +313,46 @@ app.get('/api/uipath/processes/:folderId', authenticateToken, (req, res) => {
                 }
             });
 
-            if (!response.ok) throw new Error(`Releases API hatası: ${response.statusText}`);
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`Releases API hatası: ${text}`);
+            }
+            const data = await response.json();
+            res.json(data.value);
+        } catch (apiErr) {
+            res.status(400).json({ error: apiErr.message });
+        }
+    });
+});
+
+// GET robots by Folder ID
+app.get('/api/uipath/robots/:folderId', authenticateToken, (req, res) => {
+    const folderId = req.params.folderId;
+    db.query('SELECT * FROM config_uipath WHERE user_id = ?', [req.user.id], async (err, results) => {
+        if (err) return res.status(500).json(err);
+        if (results.length === 0) return res.status(404).json({ error: 'UiPath konfigürasyonu bulunamadı.' });
+
+        const config = results[0];
+        try {
+            const token = await getUiPathToken(config);
+            const baseUrl = getUiPathODataUrl(config);
+            
+            // Using the specific folder robot function like in Autonomie
+            const targetUrl = `${baseUrl}/Robots/UiPath.Server.Configuration.OData.GetRobotsFromFolder(folderId=${folderId})`;
+            
+            const response = await fetch(targetUrl, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    ...(config.deployment_type !== 'cloud' ? { 'X-UIPATH-TenantName': config.tenant } : {}),
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`Robots API hatası: ${text}`);
+            }
             const data = await response.json();
             res.json(data.value);
         } catch (apiErr) {

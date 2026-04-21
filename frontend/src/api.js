@@ -53,3 +53,8 @@ export const fetchProcesses = async (folderId) => {
     const response = await axios.get(`${API_URL}/uipath/processes/${folderId}`);
     return response.data;
 };
+
+export const fetchRobotsForFolder = async (folderId) => {
+    const response = await axios.get(`${API_URL}/uipath/robots/${folderId}`);
+    return response.data;
+};

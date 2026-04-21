@@ -2,22 +2,36 @@ import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Bot, PlayCircle, Calendar, 
   Zap, Bell, Menu, X, Activity, Play, 
-  CheckCircle, XCircle, Loader2 
+  CheckCircle, XCircle, Loader2, LogOut 
 } from 'lucide-react';
 import { fetchRobots, fetchActivity, triggerRobot } from './api';
+import Login from './Login';
 import './App.css';
 
 function App() {
+  const [user, setUser] = useState(null);
   const [robots, setRobots] = useState([]);
   const [activity, setActivity] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [triggering, setTriggering] = useState(null);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 5000); // Poll every 5s
-    return () => clearInterval(interval);
+    const savedUser = localStorage.getItem('user');
+    const token = localStorage.getItem('token');
+    if (savedUser && token) {
+      setUser(JSON.parse(savedUser));
+    }
+    setInitialized(true);
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadData();
+      const interval = setInterval(loadData, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   const loadData = async () => {
     try {
@@ -26,8 +40,17 @@ function App() {
       setRobots(robotsData);
       setActivity(activityData);
     } catch (err) {
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        handleLogout();
+      }
       console.error('Error loading data:', err);
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
   };
 
   const handleTrigger = async (id) => {
@@ -45,9 +68,15 @@ function App() {
   const stats = {
     total: robots.length,
     running: robots.filter(r => r.status === 'running').length,
-    success: activity.filter(a => a.status === 'Success').length, // (Simulated 24h)
+    success: activity.filter(a => a.status === 'Success').length,
     failed: activity.filter(a => a.status === 'Failed').length
   };
+
+  if (!initialized) return null;
+
+  if (!user) {
+    return <Login onLogin={setUser} />;
+  }
 
   return (
     <div className="app-container">
@@ -68,11 +97,14 @@ function App() {
           <li><a href="#"><Calendar size={20} /><span>Schedules</span></a></li>
         </ul>
         <div className="sidebar-footer">
+          <button className="btn-logout" onClick={handleLogout}>
+             <LogOut size={18} /> <span>Sign Out</span>
+          </button>
           <div className="user-profile">
-            <div className="avatar">OP</div>
+            <div className="avatar">{user.username.substring(0,2).toUpperCase()}</div>
             <div className="user-info">
-              <p className="user-name">Operator</p>
-              <p className="user-role">Admin</p>
+              <p className="user-name">{user.username}</p>
+              <p className="user-role">Operator</p>
             </div>
           </div>
         </div>
@@ -84,7 +116,7 @@ function App() {
           <div className="header-left">
             <div className="title-group">
               <h1>Dashboard</h1>
-              <p>Overview of your robot fleet.</p>
+              <p>Welcome back, {user.username}!</p>
             </div>
           </div>
           <div className="header-right">
@@ -92,12 +124,11 @@ function App() {
               <Bell size={20} />
               <span className="badge"></span>
             </button>
-            <div className="header-avatar">OP</div>
+            <div className="header-avatar">{user.username.substring(0,2).toUpperCase()}</div>
           </div>
         </header>
 
         <main className="content-area">
-          {/* Stats Grid */}
           <div className="stats-grid">
             <div className="stat-card">
               <div className="stat-header">
@@ -126,7 +157,6 @@ function App() {
           </div>
 
           <div className="dashboard-sections">
-            {/* Quick Trigger */}
             <div className="section-card">
               <div className="section-header">
                 <h2>Quick Trigger</h2>
@@ -136,7 +166,7 @@ function App() {
                 {robots.map(robot => (
                   <div key={robot.id} className="list-item">
                     <div className="item-info">
-                      <h3>{robot.name}</h3>
+                      <h3>{robot.name} {robot.user_id ? '👤' : ''}</h3>
                       <p>Last run: {robot.last_run || 'Never'}</p>
                     </div>
                     <button 
@@ -155,7 +185,6 @@ function App() {
               </div>
             </div>
 
-            {/* Recent Activity */}
             <div className="section-card">
               <div className="section-header">
                 <h2>Recent Activity</h2>

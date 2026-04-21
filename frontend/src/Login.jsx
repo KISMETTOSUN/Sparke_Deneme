@@ -19,7 +19,7 @@ function Login({ onLogin }) {
       localStorage.setItem('user', JSON.stringify(data.user));
       onLogin(data.user);
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
+      setError(err.response?.data?.error || 'Giriş başarısız');
     } finally {
       setLoading(false);
     }
@@ -33,29 +33,30 @@ function Login({ onLogin }) {
             <Zap className="logo-icon" size={32} />
             <span>Sparke</span>
           </div>
-          <h2>Welcome Back</h2>
-          <p>Please enter your details to sign in</p>
+          <h2>Hoş Geldiniz</h2>
+          <p>Sisteme giriş yapmak için bilgilerinizi girin</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="login-form">
+        <form onSubmit={handleSubmit} className="login-form" autoComplete="off">
           {error && <div className="error-message">{error}</div>}
           
           <div className="form-group">
-            <label>Username</label>
+            <label>Kullanıcı Adı</label>
             <div className="input-icon">
               <User size={18} />
               <input 
                 type="text" 
-                placeholder="Enter your username"
+                placeholder="Kullanıcı adınızı girin"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                autoComplete="new-username"
                 required
               />
             </div>
           </div>
 
           <div className="form-group">
-            <label>Password</label>
+            <label>Parola</label>
             <div className="input-icon">
               <Lock size={18} />
               <input 
@@ -63,13 +64,14 @@ function Login({ onLogin }) {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
                 required
               />
             </div>
           </div>
 
           <button type="submit" className="btn btn-primary login-btn" disabled={loading}>
-            {loading ? <Loader2 className="spin" size={20} /> : 'Sign In'}
+            {loading ? <Loader2 className="spin" size={20} /> : 'Giriş Yap'}
           </button>
         </form>
       </div>

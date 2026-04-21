@@ -90,18 +90,18 @@ function App() {
         </div>
         <ul className="nav-links">
           <li className="active">
-            <a href="#"><LayoutDashboard size={20} /><span>Dashboard</span></a>
+            <a href="#"><LayoutDashboard size={20} /><span>Kontrol Paneli</span></a>
           </li>
         </ul>
         <div className="sidebar-footer">
           <button className="btn-logout" onClick={handleLogout}>
-             <LogOut size={18} /> <span>Sign Out</span>
+             <LogOut size={18} /> <span>Çıkış Yap</span>
           </button>
           <div className="user-profile">
             <div className="avatar">{user.username.substring(0,2).toUpperCase()}</div>
             <div className="user-info">
               <p className="user-name">{user.username}</p>
-              <p className="user-role">Operator</p>
+              <p className="user-role">Operatör</p>
             </div>
           </div>
         </div>
@@ -112,8 +112,8 @@ function App() {
         <header className="top-header">
           <div className="header-left">
             <div className="title-group">
-              <h1>Dashboard</h1>
-              <p>Welcome back, {user.username}!</p>
+              <h1>Kontrol Paneli</h1>
+              <p>Hoş geldin, {user.username}!</p>
             </div>
           </div>
           <div className="header-right">
@@ -129,25 +129,25 @@ function App() {
           <div className="stats-grid">
             <div className="stat-card">
               <div className="stat-header">
-                <span>Total Robots</span> <Activity size={18} />
+                <span>Toplam Robot</span> <Activity size={18} />
               </div>
               <div className="stat-value">{stats.total}</div>
             </div>
             <div className="stat-card">
               <div className="stat-header">
-                <span>Running</span> <Play size={18} />
+                <span>Çalışan</span> <Play size={18} />
               </div>
               <div className="stat-value">{stats.running}</div>
             </div>
             <div className="stat-card">
               <div className="stat-header">
-                <span>Success (24h)</span> <CheckCircle size={18} />
+                <span>Başarılı (24s)</span> <CheckCircle size={18} />
               </div>
               <div className="stat-value highlight">{stats.success}</div>
             </div>
             <div className="stat-card">
               <div className="stat-header">
-                <span>Failed (24h)</span> <XCircle size={18} />
+                <span>Başarısız (24s)</span> <XCircle size={18} />
               </div>
               <div className="stat-value">{stats.failed}</div>
             </div>
@@ -156,15 +156,15 @@ function App() {
           <div className="dashboard-sections">
             <div className="section-card">
               <div className="section-header">
-                <h2>Quick Trigger</h2>
-                <p>Frequently used robots</p>
+                <h2>Hızlı Tetikleme</h2>
+                <p>Sık kullanılan robotlar</p>
               </div>
               <div className="list-container">
                 {robots.map(robot => (
                   <div key={robot.id} className="list-item">
                     <div className="item-info">
                       <h3>{robot.name} {robot.user_id ? '👤' : ''}</h3>
-                      <p>Last run: {robot.last_run || 'Never'}</p>
+                      <p>Son çalışma: {robot.last_run || 'Hiç'}</p>
                     </div>
                     <button 
                       className="btn btn-primary"
@@ -172,9 +172,9 @@ function App() {
                       onClick={() => handleTrigger(robot.id)}
                     >
                       {triggering === robot.id ? (
-                        <><Loader2 className="spin" size={14} /> Starting...</>
+                        <><Loader2 className="spin" size={14} /> Başlatılıyor...</>
                       ) : (
-                        <><Play size={14} /> Trigger</>
+                        <><Play size={14} /> Tetikle</>
                       )}
                     </button>
                   </div>
@@ -184,8 +184,8 @@ function App() {
 
             <div className="section-card">
               <div className="section-header">
-                <h2>Recent Activity</h2>
-                <p>Latest runs across the fleet</p>
+                <h2>Son Aktiviteler</h2>
+                <p>Tüm filodaki son hareketler</p>
               </div>
               <div className="list-container">
                 {activity.map(log => (

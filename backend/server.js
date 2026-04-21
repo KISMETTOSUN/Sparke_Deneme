@@ -139,7 +139,7 @@ app.get('/api/config/:type', authenticateToken, (req, res) => {
 
 // POST config (UiPath)
 app.post('/api/config/uipath', authenticateToken, async (req, res) => {
-    const { url, tenant, client_id, client_secret, deployment_type } = req.body;
+    const { url, tenant, client_id, client_secret, deployment_type, orch_tenant_id } = req.body;
     
     // --- UiPath Validation ---
     try {
@@ -180,14 +180,14 @@ app.post('/api/config/uipath', authenticateToken, async (req, res) => {
     db.query('SELECT id FROM config_uipath WHERE user_id = ?', [req.user.id], (err, results) => {
         if (err) return res.status(500).json(err);
         if (results.length > 0) {
-            db.query('UPDATE config_uipath SET url=?, tenant=?, client_id=?, client_secret=?, deployment_type=?, last_update=? WHERE user_id=?',
-            [url, tenant, client_id, encryptedSecret, deployment_type, date, req.user.id], (err) => {
+            db.query('UPDATE config_uipath SET url=?, tenant=?, client_id=?, client_secret=?, deployment_type=?, orch_tenant_id=?, last_update=? WHERE user_id=?',
+            [url, tenant, client_id, encryptedSecret, deployment_type, orch_tenant_id, date, req.user.id], (err) => {
                 if (err) return res.status(500).json(err);
                 res.json({ message: 'Updated', last_update: date });
             });
         } else {
-            db.query('INSERT INTO config_uipath (user_id, url, tenant, client_id, client_secret, deployment_type, last_update, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [req.user.id, url, tenant, client_id, encryptedSecret, deployment_type, date, date], (err) => {
+            db.query('INSERT INTO config_uipath (user_id, url, tenant, client_id, client_secret, deployment_type, orch_tenant_id, last_update, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [req.user.id, url, tenant, client_id, encryptedSecret, deployment_type, orch_tenant_id, date, date], (err) => {
                 if (err) return res.status(500).json(err);
                 res.json({ message: 'Inserted', last_update: date });
             });
@@ -268,7 +268,7 @@ app.get('/api/uipath/folders', authenticateToken, (req, res) => {
             const response = await fetch(targetUrl, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    ...(config.deployment_type !== 'cloud' ? { 'X-UIPATH-TenantName': config.tenant } : {}),
+                    'X-UIPATH-TenantName': config.tenant,
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 }

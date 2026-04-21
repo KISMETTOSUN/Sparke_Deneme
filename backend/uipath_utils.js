@@ -22,8 +22,8 @@ async function getUiPathToken(config) {
     params.append('client_id', client_id);
     params.append('client_secret', decryptedSecret);
     
-    // Aligned scope with Autonomie's python script:
-    params.append('scope', 'OR.Jobs OR.Folders OR.Robots');
+    // Aligned scope with Autonomie's implementation:
+    params.append('scope', 'OR.Jobs OR.Robots OR.Queues OR.Folders OR.Execution');
 
     const response = await fetch(identityUrl, {
         method: 'POST',

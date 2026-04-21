@@ -12,7 +12,7 @@ function ConfigurationView() {
   const [formFeedback, setFormFeedback] = useState({ type: null, message: '' });
 
   const [uipathForm, setUipathForm] = useState({
-    url: '', tenant: '', client_id: '', client_secret: '', deployment_type: 'cloud'
+    url: '', tenant: '', client_id: '', client_secret: '', deployment_type: 'cloud', orch_tenant_id: ''
   });
 
   const [seemeForm, setSeemeForm] = useState({
@@ -33,7 +33,8 @@ function ConfigurationView() {
           tenant: uipathData.tenant || '',
           client_id: uipathData.client_id || '',
           client_secret: uipathData.client_secret || '',
-          deployment_type: uipathData.deployment_type || 'cloud'
+          deployment_type: uipathData.deployment_type || 'cloud',
+          orch_tenant_id: uipathData.orch_tenant_id || ''
         });
         setLastUpdate(prev => ({ ...prev, uipath: uipathData.last_update }));
       }
@@ -166,7 +167,7 @@ function ConfigurationView() {
                 />
               </div>
               <div className="form-group">
-                <label>Tenant Adı</label>
+                <label>Tenant Adı (Logical Name)</label>
                 <input 
                   type="text" 
                   className="form-control" 
@@ -175,6 +176,20 @@ function ConfigurationView() {
                   value={uipathForm.tenant}
                   onChange={e => setUipathForm({...uipathForm, tenant: e.target.value})}
                 />
+              </div>
+              <div className="form-group">
+                <label>Tenant ID (Numerik)</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="123456" 
+                  autoComplete="new-string"
+                  value={uipathForm.orch_tenant_id}
+                  onChange={e => setUipathForm({...uipathForm, orch_tenant_id: e.target.value})}
+                />
+                <p className="text-muted" style={{fontSize: '0.75rem', marginTop: '4px'}}>
+                   Orchestrator URL'deki numerik ID (Örn: .../orchestrator_/?tid=<b>123456</b>)
+                </p>
               </div>
               <div className="form-group">
                 <label>Client ID</label>

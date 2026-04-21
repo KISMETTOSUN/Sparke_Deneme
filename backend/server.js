@@ -161,8 +161,38 @@ app.post('/api/config/uipath', authenticateToken, (req, res) => {
 });
 
 // POST config (SeeMe)
-app.post('/api/config/seeme', authenticateToken, (req, res) => {
+app.post('/api/config/seeme', authenticateToken, async (req, res) => {
     const { url, token, organization, bucket } = req.body;
+    
+    // --- InfluxDB Validation ---
+    try {
+        const cleanUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+        const influxUrl = `${cleanUrl}/api/v2/query?org=${encodeURIComponent(organization)}`;
+        
+        const response = await fetch(influxUrl, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Token ${token}`,
+                'Content-Type': 'application/vnd.flux',
+                'Accept': 'application/csv'
+            },
+            body: `buckets()`
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            let safeError = errorText;
+            try {
+               const parsed = JSON.parse(errorText);
+               if (parsed.message) safeError = parsed.message;
+            } catch (e) {}
+            return res.status(400).json({ error: `InfluxDB Doğrulama Hatası (${response.status}): ${safeError || response.statusText}` });
+        }
+    } catch (err) {
+        return res.status(400).json({ error: `İletişim kurulamadı: Lütfen InfluxDB URL'sini kontrol edin. (${err.message})` });
+    }
+    // --- Validation End ---
+
     let encryptedToken = token ? encrypt(token) : '';
     const date = new Date().toISOString().slice(0, 19).replace('T', ' ');
 

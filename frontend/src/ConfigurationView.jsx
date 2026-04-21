@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Server, Database, Save, Loader2, Clock } from 'lucide-react';
+import { Settings, Server, Database, Save, Loader2, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { fetchConfig, saveConfig } from './api';
 import './App.css';
 
@@ -8,6 +8,8 @@ function ConfigurationView() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [lastUpdate, setLastUpdate] = useState({ uipath: null, seeme: null });
+  
+  const [formFeedback, setFormFeedback] = useState({ type: null, message: '' });
 
   const [uipathForm, setUipathForm] = useState({
     url: '', tenant: '', client_id: '', client_secret: ''
@@ -55,16 +57,23 @@ function ConfigurationView() {
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
+    setFormFeedback({ type: null, message: '' });
+    
     try {
       if (activeTab === 'uipath') {
         const response = await saveConfig('uipath', uipathForm);
         setLastUpdate(prev => ({ ...prev, uipath: response.last_update }));
+        setFormFeedback({ type: 'success', message: 'UiPath konfigürasyonu başarıyla kaydedildi.' });
       } else {
         const response = await saveConfig('seeme', seemeForm);
         setLastUpdate(prev => ({ ...prev, seeme: response.last_update }));
+        setFormFeedback({ type: 'success', message: 'SeeMe InfluxDB bağlantısı başarıyla doğrulandı ve kaydedildi.' });
       }
     } catch (err) {
-      console.error("Kaydetme hatası", err);
+      setFormFeedback({ 
+        type: 'error', 
+        message: err.response?.data?.error || 'Ayarlar kaydedilirken bilinmeyen bir ağ hatası oluştu.' 
+      });
     } finally {
       setSaving(false);
     }
@@ -83,13 +92,13 @@ function ConfigurationView() {
       <div className="tab-menu">
         <button 
           className={`tab-button ${activeTab === 'uipath' ? 'active' : ''}`}
-          onClick={() => setActiveTab('uipath')}
+          onClick={() => { setActiveTab('uipath'); setFormFeedback({type: null, message: ''}); }}
         >
           <Server size={18} /> UiPath Konfigürasyonu
         </button>
         <button 
           className={`tab-button ${activeTab === 'seeme' ? 'active' : ''}`}
-          onClick={() => setActiveTab('seeme')}
+          onClick={() => { setActiveTab('seeme'); setFormFeedback({type: null, message: ''}); }}
         >
           <Database size={18} /> SeeMe Konfigürasyonu
         </button>
@@ -108,6 +117,17 @@ function ConfigurationView() {
             </div>
             <p className="text-muted">Orchestrator ve Robot bağlantı ayarlarınızı buradan yönetebilirsiniz.</p>
             
+            {formFeedback.type === 'error' && (
+              <div className="error-message" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <AlertCircle size={18} /> {formFeedback.message}
+              </div>
+            )}
+            {formFeedback.type === 'success' && (
+              <div style={{ background: '#dcfce3', color: '#166534', padding: '12px', borderRadius: '10px', marginBottom: '16px', fontSize: '0.85rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle size={18} /> {formFeedback.message}
+              </div>
+            )}
+
             <form className="form-layout" autoComplete="off" onSubmit={handleSave}>
               <div className="form-group">
                 <label>Orchestrator URL</label>
@@ -173,6 +193,17 @@ function ConfigurationView() {
             </div>
             <p className="text-muted">Dış sistemlere aktarılacak SeeMe verilerinin konfigürasyonu.</p>
             
+            {formFeedback.type === 'error' && (
+              <div className="error-message" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <AlertCircle size={18} /> {formFeedback.message}
+              </div>
+            )}
+            {formFeedback.type === 'success' && (
+              <div style={{ background: '#dcfce3', color: '#166534', padding: '12px', borderRadius: '10px', marginBottom: '16px', fontSize: '0.85rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle size={18} /> {formFeedback.message}
+              </div>
+            )}
+
             <form className="form-layout" autoComplete="off" onSubmit={handleSave}>
               <div className="form-group">
                 <label>URL</label>
@@ -220,7 +251,7 @@ function ConfigurationView() {
               </div>
               <button type="submit" className="btn btn-primary" style={{marginTop: '16px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center'}} disabled={saving}>
                 {saving ? <Loader2 className="spin" size={16} /> : <Save size={16} />} 
-                {saving ? 'Kaydediliyor...' : 'Ayarları Kaydet'}
+                {saving ? 'Bağlantı Sınanıyor...' : 'Doğrula ve Kaydet'}
               </button>
             </form>
           </div>

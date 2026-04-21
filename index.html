@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sparke | Robot Control Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i data-lucide="zap" class="logo-icon"></i>
+                    <span>Sparke</span>
+                </div>
+                <button class="mobile-close" id="mobileClose">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <ul class="nav-links">
+                <li class="active" data-view="dashboard">
+                    <a href="#"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+                </li>
+                <li data-view="robots">
+                    <a href="#"><i data-lucide="bot"></i><span>Robots</span></a>
+                </li>
+                <li data-view="runs">
+                    <a href="#"><i data-lucide="play-circle"></i><span>Runs</span></a>
+                </li>
+                <li data-view="schedules">
+                    <a href="#"><i data-lucide="calendar"></i><span>Schedules</span></a>
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="avatar">OP</div>
+                    <div class="user-info">
+                        <p class="user-name">Operator</p>
+                        <p class="user-role">Admin</p>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="main-wrapper">
+            <header class="top-header">
+                <div class="header-left">
+                    <button class="mobile-toggle" id="mobileToggle">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    <div class="title-group">
+                        <h1 id="pageTitle">Dashboard</h1>
+                        <p id="pageSubtitle">Overview of your robot fleet.</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button class="icon-btn">
+                        <i data-lucide="bell"></i>
+                        <span class="badge"></span>
+                    </button>
+                    <div class="header-avatar">OP</div>
+                </div>
+            </header>
+
+            <main class="content-area" id="mainContent">
+                <!-- Dashboard View -->
+                <section class="view active" id="dashboardView">
+                    <!-- Stats Grid -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span>Total Robots</span>
+                                <i data-lucide="activity"></i>
+                            </div>
+                            <div class="stat-value">8</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span>Running</span>
+                                <i data-lucide="play"></i>
+                            </div>
+                            <div class="stat-value">1</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span>Success (24h)</span>
+                                <i data-lucide="check-circle"></i>
+                            </div>
+                            <div class="stat-value highlight">2</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span>Failed (24h)</span>
+                                <i data-lucide="x-circle"></i>
+                            </div>
+                            <div class="stat-value">1</div>
+                        </div>
+                    </div>
+
+                    <!-- Dashboard Main Sections -->
+                    <div class="dashboard-sections">
+                        <div class="section-card quick-trigger">
+                            <div class="section-header">
+                                <h2>Quick Trigger</h2>
+                                <p>Frequently used robots</p>
+                            </div>
+                            <div class="list-container">
+                                <div class="list-item">
+                                    <div class="item-info">
+                                        <h3>Invoice Processor</h3>
+                                        <p>Last run: 2 hours ago</p>
+                                    </div>
+                                    <button class="btn btn-primary trigger-btn">
+                                        <i data-lucide="play"></i> Trigger
+                                    </button>
+                                </div>
+                                <div class="list-item">
+                                    <div class="item-info">
+                                        <h3>Salesforce Sync</h3>
+                                        <p>Last run: 15 mins ago</p>
+                                    </div>
+                                    <button class="btn btn-primary trigger-btn">
+                                        <i data-lucide="play"></i> Trigger
+                                    </button>
+                                </div>
+                                <div class="list-item">
+                                    <div class="item-info">
+                                        <h3>Daily Report Generator</h3>
+                                        <p>Last run: 1 day ago</p>
+                                    </div>
+                                    <button class="btn btn-primary trigger-btn">
+                                        <i data-lucide="play"></i> Trigger
+                                    </button>
+                                </div>
+                                <div class="list-item">
+                                    <div class="item-info">
+                                        <h3>Inventory Reconciliation</h3>
+                                        <p>Last run: 5 mins ago</p>
+                                    </div>
+                                    <button class="btn btn-primary trigger-btn">
+                                        <i data-lucide="play"></i> Trigger
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="section-card recent-activity">
+                            <div class="section-header">
+                                <h2>Recent Activity</h2>
+                                <p>Latest runs across the fleet</p>
+                            </div>
+                            <div class="list-container">
+                                <div class="activity-item">
+                                    <div class="activity-icon success">
+                                        <i data-lucide="check-circle"></i>
+                                    </div>
+                                    <div class="activity-info">
+                                        <h3>Salesforce Sync</h3>
+                                        <p>1:00:00 PM • 45s</p>
+                                    </div>
+                                    <span class="status-badge success">Success</span>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-icon failed">
+                                        <i data-lucide="x-circle"></i>
+                                    </div>
+                                    <div class="activity-info">
+                                        <h3>Inventory Reconciliation</h3>
+                                        <p>12:45:00 PM • 2m 10s</p>
+                                    </div>
+                                    <span class="status-badge failed">Failed</span>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-icon running pulse">
+                                        <i data-lucide="activity"></i>
+                                    </div>
+                                    <div class="activity-info">
+                                        <h3>Email Triage</h3>
+                                        <p>1:14:00 PM • ...</p>
+                                    </div>
+                                    <span class="status-badge running">Running</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+    <script src="script.js"></script>
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>

@@ -4,6 +4,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const jwt = require('jsonwebtoken');
 const { encrypt, decrypt } = require('./encryption');
+const { getUiPathToken, getUiPathODataUrl } = require('./uipath_utils');
 
 dotenv.config();
 
@@ -247,6 +248,80 @@ app.post('/api/config/seeme', authenticateToken, async (req, res) => {
         }
     });
 });
+
+// --- UiPath Live Endpoints ---
+
+// GET folders
+app.get('/api/uipath/folders', authenticateToken, (req, res) => {
+    db.query('SELECT * FROM config_uipath WHERE user_id = ?', [req.user.id], async (err, results) => {
+        if (err) return res.status(500).json(err);
+        if (results.length === 0) return res.status(404).json({ error: 'UiPath konfigürasyonu bulunamadı.' });
+
+        const config = results[0];
+        try {
+            const token = await getUiPathToken(config);
+            const baseUrl = getUiPathODataUrl(config);
+            const targetUrl = `${baseUrl}/Folders`;
+            
+            console.log(`[UiPath] Klasörler çekiliyor: ${targetUrl}`);
+
+            const response = await fetch(targetUrl, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    ...(config.deployment_type !== 'cloud' ? { 'X-UIPATH-TenantName': config.tenant } : {}),
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                let errorData = {};
+                try { errorData = JSON.parse(text); } catch(e) {}
+                console.error(`[UiPath] API Hatası (${response.status}):`, text);
+                throw new Error(`Folders API hatası (${response.status}): ${errorData.message || response.statusText || text}`);
+            }
+            
+            const data = await response.json();
+            res.json(data.value);
+        } catch (apiErr) {
+            console.error('[UiPath] Genel Hata:', apiErr.message);
+            res.status(400).json({ error: apiErr.message });
+        }
+    });
+});
+
+// GET processes (Releases) by Folder ID
+app.get('/api/uipath/processes/:folderId', authenticateToken, (req, res) => {
+    const folderId = req.params.folderId;
+    db.query('SELECT * FROM config_uipath WHERE user_id = ?', [req.user.id], async (err, results) => {
+        if (err) return res.status(500).json(err);
+        if (results.length === 0) return res.status(404).json({ error: 'UiPath konfigürasyonu bulunamadı.' });
+
+        const config = results[0];
+        try {
+            const token = await getUiPathToken(config);
+            const baseUrl = getUiPathODataUrl(config);
+            
+            const response = await fetch(`${baseUrl}/Releases`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    ...(config.deployment_type !== 'cloud' ? { 'X-UIPATH-TenantName': config.tenant } : {}),
+                    'X-UIPATH-OrganizationUnitId': folderId,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) throw new Error(`Releases API hatası: ${response.statusText}`);
+            const data = await response.json();
+            res.json(data.value);
+        } catch (apiErr) {
+            res.status(400).json({ error: apiErr.message });
+        }
+    });
+});
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

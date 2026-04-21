@@ -8,6 +8,7 @@ import {
 import { fetchRobots, fetchActivity, triggerRobot } from './api';
 import Login from './Login';
 import ConfigurationView from './ConfigurationView';
+import RobotsView from './RobotsView';
 import './App.css';
 
 function App() {
@@ -102,6 +103,11 @@ function App() {
               <Settings size={20} /><span>Konfigürasyon</span>
             </a>
           </li>
+          <li className={currentView === 'robots' ? 'active' : ''}>
+            <a href="#" onClick={(e) => { e.preventDefault(); setCurrentView('robots'); }}>
+              <Bot size={20} /><span>Robotlar</span>
+            </a>
+          </li>
           <li className={currentView === 'connections' ? 'active' : ''}>
             <a href="#" onClick={(e) => { e.preventDefault(); setCurrentView('connections'); }}>
               <Link size={20} /><span>Bağlantılar</span>
@@ -127,7 +133,12 @@ function App() {
         <header className="top-header">
           <div className="header-left">
             <div className="title-group">
-              <h1>Kontrol Paneli</h1>
+              <h1>
+                {currentView === 'dashboard' && 'Kontrol Paneli'}
+                {currentView === 'configuration' && 'Konfigürasyon'}
+                {currentView === 'robots' && 'Robotlar'}
+                {currentView === 'connections' && 'Bağlantılar'}
+              </h1>
               <p>Hoş geldin, {user.username}!</p>
             </div>
           </div>
@@ -228,6 +239,8 @@ function App() {
           )}
 
           {currentView === 'configuration' && <ConfigurationView />}
+
+          {currentView === 'robots' && <RobotsView />}
 
           {currentView === 'connections' && (
             <div className="section-card fade-in">

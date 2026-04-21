@@ -43,3 +43,13 @@ export const saveConfig = async (type, data) => {
     const response = await axios.post(`${API_URL}/config/${type}`, data);
     return response.data;
 };
+
+export const fetchFolders = async () => {
+    const response = await axios.get(`${API_URL}/uipath/folders`);
+    return response.data;
+};
+
+export const fetchProcesses = async (folderId) => {
+    const response = await axios.get(`${API_URL}/uipath/processes/${folderId}`);
+    return response.data;
+};

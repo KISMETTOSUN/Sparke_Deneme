@@ -33,3 +33,13 @@ export const triggerRobot = async (id) => {
     const response = await axios.post(`${API_URL}/trigger/${id}`);
     return response.data;
 };
+
+export const fetchConfig = async (type) => {
+    const response = await axios.get(`${API_URL}/config/${type}`);
+    return response.data;
+};
+
+export const saveConfig = async (type, data) => {
+    const response = await axios.post(`${API_URL}/config/${type}`, data);
+    return response.data;
+};

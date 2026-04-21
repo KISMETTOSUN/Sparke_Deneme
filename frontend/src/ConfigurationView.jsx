@@ -1,9 +1,82 @@
-import React, { useState } from 'react';
-import { Settings, Server, Database } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings, Server, Database, Save, Loader2, Clock } from 'lucide-react';
+import { fetchConfig, saveConfig } from './api';
 import './App.css';
 
 function ConfigurationView() {
   const [activeTab, setActiveTab] = useState('uipath');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState({ uipath: null, seeme: null });
+
+  const [uipathForm, setUipathForm] = useState({
+    url: '', tenant: '', client_id: '', client_secret: ''
+  });
+
+  const [seemeForm, setSeemeForm] = useState({
+    url: '', token: '', organization: '', bucket: ''
+  });
+
+  useEffect(() => {
+    loadConfigurations();
+  }, []);
+
+  const loadConfigurations = async () => {
+    setLoading(true);
+    try {
+      const uipathData = await fetchConfig('uipath');
+      if (uipathData) {
+        setUipathForm({
+          url: uipathData.url || '',
+          tenant: uipathData.tenant || '',
+          client_id: uipathData.client_id || '',
+          client_secret: uipathData.client_secret || ''
+        });
+        setLastUpdate(prev => ({ ...prev, uipath: uipathData.last_update }));
+      }
+
+      const seemeData = await fetchConfig('seeme');
+      if (seemeData) {
+        setSeemeForm({
+          url: seemeData.url || '',
+          token: seemeData.token || '',
+          organization: seemeData.organization || '',
+          bucket: seemeData.bucket || ''
+        });
+        setLastUpdate(prev => ({ ...prev, seeme: seemeData.last_update }));
+      }
+    } catch (err) {
+      console.error("Konfigürasyonlar yüklenirken hata oluştu", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      if (activeTab === 'uipath') {
+        const response = await saveConfig('uipath', uipathForm);
+        setLastUpdate(prev => ({ ...prev, uipath: response.last_update }));
+      } else {
+        const response = await saveConfig('seeme', seemeForm);
+        setLastUpdate(prev => ({ ...prev, seeme: response.last_update }));
+      }
+    } catch (err) {
+      console.error("Kaydetme hatası", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="section-card fade-in" style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+        <Loader2 className="spin" size={32} color="var(--primary)" />
+      </div>
+    );
+  }
 
   return (
     <div className="configuration-container">
@@ -25,46 +98,130 @@ function ConfigurationView() {
       <div className="tab-content">
         {activeTab === 'uipath' && (
           <div className="section-card fade-in">
-            <h2>UiPath Konfigürasyonu</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2>UiPath Konfigürasyonu</h2>
+              {lastUpdate.uipath && (
+                <span className="text-muted" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
+                  <Clock size={14} /> Son Güncelleme: {new Date(lastUpdate.uipath).toLocaleString('tr-TR')}
+                </span>
+              )}
+            </div>
             <p className="text-muted">Orchestrator ve Robot bağlantı ayarlarınızı buradan yönetebilirsiniz.</p>
             
-            <form className="form-layout" autoComplete="off" onSubmit={e => e.preventDefault()}>
+            <form className="form-layout" autoComplete="off" onSubmit={handleSave}>
               <div className="form-group">
                 <label>Orchestrator URL</label>
-                <input type="text" className="form-control" placeholder="https://cloud.uipath.com/..." autoComplete="new-string" />
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="https://cloud.uipath.com/..." 
+                  autoComplete="new-string" 
+                  value={uipathForm.url}
+                  onChange={e => setUipathForm({...uipathForm, url: e.target.value})}
+                />
               </div>
               <div className="form-group">
                 <label>Tenant Adı</label>
-                <input type="text" className="form-control" placeholder="DefaultTenant" autoComplete="new-string" />
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="DefaultTenant" 
+                  autoComplete="new-string"
+                  value={uipathForm.tenant}
+                  onChange={e => setUipathForm({...uipathForm, tenant: e.target.value})}
+                />
               </div>
               <div className="form-group">
                 <label>Client ID</label>
-                <input type="text" className="form-control" placeholder="Client kimliğinizi girin" autoComplete="new-string" />
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="Client kimliğinizi girin" 
+                  autoComplete="new-string"
+                  value={uipathForm.client_id}
+                  onChange={e => setUipathForm({...uipathForm, client_id: e.target.value})}
+                />
               </div>
               <div className="form-group">
-                <label>Kullanıcı Anahtarı (User Key)</label>
-                <input type="password" className="form-control" placeholder="••••••••" autoComplete="new-password" />
+                <label>Client Secret</label>
+                <input 
+                  type="password" 
+                  className="form-control" 
+                  placeholder="••••••••" 
+                  autoComplete="new-password"
+                  value={uipathForm.client_secret}
+                  onChange={e => setUipathForm({...uipathForm, client_secret: e.target.value})}
+                />
               </div>
-              <button className="btn btn-primary" style={{marginTop: '16px'}}>Ayarları Kaydet</button>
+              <button type="submit" className="btn btn-primary" style={{marginTop: '16px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center'}} disabled={saving}>
+                {saving ? <Loader2 className="spin" size={16} /> : <Save size={16} />} 
+                {saving ? 'Kaydediliyor...' : 'Ayarları Kaydet'}
+              </button>
             </form>
           </div>
         )}
 
         {activeTab === 'seeme' && (
           <div className="section-card fade-in">
-            <h2>SeeMe Konfigürasyonu</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2>SeeMe Konfigürasyonu</h2>
+              {lastUpdate.seeme && (
+                <span className="text-muted" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
+                  <Clock size={14} /> Son Güncelleme: {new Date(lastUpdate.seeme).toLocaleString('tr-TR')}
+                </span>
+              )}
+            </div>
             <p className="text-muted">Dış sistemlere aktarılacak SeeMe verilerinin konfigürasyonu.</p>
             
-            <form className="form-layout" autoComplete="off" onSubmit={e => e.preventDefault()}>
+            <form className="form-layout" autoComplete="off" onSubmit={handleSave}>
               <div className="form-group">
-                <label>SeeMe API Adresi</label>
-                <input type="text" className="form-control" placeholder="https://api.seeme.com/..." autoComplete="new-string" />
+                <label>URL</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="https://..." 
+                  autoComplete="new-string"
+                  value={seemeForm.url}
+                  onChange={e => setSeemeForm({...seemeForm, url: e.target.value})}
+                />
               </div>
               <div className="form-group">
-                <label>Erişim Token'ı</label>
-                <input type="password" className="form-control" placeholder="Bearer..." autoComplete="new-password" />
+                <label>Token</label>
+                <input 
+                  type="password" 
+                  className="form-control" 
+                  placeholder="Token bilginizi girin" 
+                  autoComplete="new-password"
+                  value={seemeForm.token}
+                  onChange={e => setSeemeForm({...seemeForm, token: e.target.value})}
+                />
               </div>
-              <button className="btn btn-primary" style={{marginTop: '16px'}}>Ayarları Kaydet</button>
+              <div className="form-group">
+                <label>Organization</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="Organizasyon adı" 
+                  autoComplete="new-string"
+                  value={seemeForm.organization}
+                  onChange={e => setSeemeForm({...seemeForm, organization: e.target.value})}
+                />
+              </div>
+              <div className="form-group">
+                <label>Bucket</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="Bucket adı" 
+                  autoComplete="new-string"
+                  value={seemeForm.bucket}
+                  onChange={e => setSeemeForm({...seemeForm, bucket: e.target.value})}
+                />
+              </div>
+              <button type="submit" className="btn btn-primary" style={{marginTop: '16px', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center'}} disabled={saving}>
+                {saving ? <Loader2 className="spin" size={16} /> : <Save size={16} />} 
+                {saving ? 'Kaydediliyor...' : 'Ayarları Kaydet'}
+              </button>
             </form>
           </div>
         )}

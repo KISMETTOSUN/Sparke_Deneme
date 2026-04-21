@@ -117,6 +117,73 @@ app.post('/api/trigger/:id', authenticateToken, (req, res) => {
     });
 });
 
+// --- Config Endpoints ---
+
+// GET config (UiPath & SeeMe)
+app.get('/api/config/:type', authenticateToken, (req, res) => {
+    const table = req.params.type === 'uipath' ? 'config_uipath' : 'config_seeme';
+    const secretField = req.params.type === 'uipath' ? 'client_secret' : 'token';
+    
+    db.query(`SELECT * FROM ${table} WHERE user_id = ?`, [req.user.id], (err, results) => {
+        if (err) return res.status(500).json(err);
+        if (results.length === 0) return res.json(null);
+        
+        const config = results[0];
+        if (config[secretField]) {
+            try { config[secretField] = decrypt(config[secretField]); } catch(e) {}
+        }
+        res.json(config);
+    });
+});
+
+// POST config (UiPath)
+app.post('/api/config/uipath', authenticateToken, (req, res) => {
+    const { url, tenant, client_id, client_secret } = req.body;
+    let encryptedSecret = client_secret ? encrypt(client_secret) : '';
+    const date = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+    db.query('SELECT id FROM config_uipath WHERE user_id = ?', [req.user.id], (err, results) => {
+        if (err) return res.status(500).json(err);
+        if (results.length > 0) {
+            db.query('UPDATE config_uipath SET url=?, tenant=?, client_id=?, client_secret=?, last_update=? WHERE user_id=?',
+            [url, tenant, client_id, encryptedSecret, date, req.user.id], (err) => {
+                if (err) return res.status(500).json(err);
+                res.json({ message: 'Updated', last_update: date });
+            });
+        } else {
+            db.query('INSERT INTO config_uipath (user_id, url, tenant, client_id, client_secret, last_update, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [req.user.id, url, tenant, client_id, encryptedSecret, date, date], (err) => {
+                if (err) return res.status(500).json(err);
+                res.json({ message: 'Inserted', last_update: date });
+            });
+        }
+    });
+});
+
+// POST config (SeeMe)
+app.post('/api/config/seeme', authenticateToken, (req, res) => {
+    const { url, token, organization, bucket } = req.body;
+    let encryptedToken = token ? encrypt(token) : '';
+    const date = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+    db.query('SELECT id FROM config_seeme WHERE user_id = ?', [req.user.id], (err, results) => {
+        if (err) return res.status(500).json(err);
+        if (results.length > 0) {
+            db.query('UPDATE config_seeme SET url=?, token=?, organization=?, bucket=?, last_update=? WHERE user_id=?',
+            [url, encryptedToken, organization, bucket, date, req.user.id], (err) => {
+                if (err) return res.status(500).json(err);
+                res.json({ message: 'Updated', last_update: date });
+            });
+        } else {
+            db.query('INSERT INTO config_seeme (user_id, url, token, organization, bucket, last_update, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [req.user.id, url, encryptedToken, organization, bucket, date, date], (err) => {
+                if (err) return res.status(500).json(err);
+                res.json({ message: 'Inserted', last_update: date });
+            });
+        }
+    });
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

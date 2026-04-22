@@ -9,6 +9,7 @@ import { fetchRobots, fetchActivity, triggerRobot } from './api';
 import Login from './Login';
 import ConfigurationView from './ConfigurationView';
 import RobotsView from './RobotsView';
+import ConnectionsView from './ConnectionsView';
 import './App.css';
 
 function App() {
@@ -242,12 +243,7 @@ function App() {
 
           {currentView === 'robots' && <RobotsView />}
 
-          {currentView === 'connections' && (
-            <div className="section-card fade-in">
-              <h2>Bağlantılar</h2>
-              <p className="text-muted">Dış sistem bağlantı ayarlarınız burada listelenecektir.</p>
-            </div>
-          )}
+          {currentView === 'connections' && <ConnectionsView />}
         </main>
       </div>
     </div>

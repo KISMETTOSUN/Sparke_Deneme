@@ -249,6 +249,60 @@ app.post('/api/config/seeme', authenticateToken, async (req, res) => {
     });
 });
 
+// --- External Connections Endpoints ---
+
+// GET all external connections
+app.get('/api/connections', authenticateToken, (req, res) => {
+    db.query('SELECT app_name, last_update FROM external_connections WHERE user_id = ?', [req.user.id], (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
+
+// GET specific connection config
+app.get('/api/connections/:type', authenticateToken, (req, res) => {
+    const appName = req.params.type;
+    db.query('SELECT config, last_update FROM external_connections WHERE user_id = ? AND app_name = ?', [req.user.id, appName], (err, results) => {
+        if (err) return res.status(500).json(err);
+        if (results.length === 0) return res.json(null);
+        
+        try {
+            const config = JSON.parse(results[0].config);
+            // Decrypt password/token fields if they exist
+            Object.keys(config).forEach(key => {
+                if (key.toLowerCase().includes('password') || key.toLowerCase().includes('token') || key.toLowerCase().includes('secret')) {
+                    try { config[key] = decrypt(config[key]); } catch(e) {}
+                }
+            });
+            res.json({ config, last_update: results[0].last_update });
+        } catch (e) {
+            res.status(500).json({ error: 'Config parsing failed' });
+        }
+    });
+});
+
+// POST save/update connection
+app.post('/api/connections/:type', authenticateToken, (req, res) => {
+    const appName = req.params.type;
+    const config = req.body;
+    
+    // Encrypt sensitive fields
+    Object.keys(config).forEach(key => {
+        if (key.toLowerCase().includes('password') || key.toLowerCase().includes('token') || key.toLowerCase().includes('secret')) {
+            config[key] = encrypt(config[key]);
+        }
+    });
+
+    const configStr = JSON.stringify(config);
+    const date = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+    db.query('INSERT INTO external_connections (user_id, app_name, config, last_update) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE config = ?, last_update = ?',
+    [req.user.id, appName, configStr, date, configStr, date], (err) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: 'Saved', last_update: date });
+    });
+});
+
 // --- UiPath Live Endpoints ---
 
 // GET folders

@@ -63,3 +63,18 @@ export const startUiPathJob = async (folderId, releaseKey, robotIds) => {
     const response = await axios.post(`${API_URL}/uipath/start-job`, { folderId, releaseKey, robotIds });
     return response.data;
 };
+
+export const fetchConnections = async () => {
+    const response = await axios.get(`${API_URL}/connections`);
+    return response.data;
+};
+
+export const fetchConnectionConfig = async (type) => {
+    const response = await axios.get(`${API_URL}/connections/${type}`);
+    return response.data;
+};
+
+export const saveExternalConnection = async (type, data) => {
+    const response = await axios.post(`${API_URL}/connections/${type}`, data);
+    return response.data;
+};

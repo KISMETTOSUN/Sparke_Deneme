@@ -294,8 +294,6 @@ app.get('/api/connections/:type', authenticateToken, (req, res) => {
 app.post('/api/connections/:type', authenticateToken, async (req, res) => {
     const appName = req.params.type;
     const config = req.body;
-<<<<<<< HEAD
-    
     // --- Notion Validation ---
     if (appName === 'notion') {
         try {
@@ -315,8 +313,6 @@ app.post('/api/connections/:type', authenticateToken, async (req, res) => {
         }
     }
     // --- Validation End ---
-=======
->>>>>>> da49def (Fix triggers and add event configurations)
 
     // Encrypt sensitive fields
     Object.keys(config).forEach(key => {

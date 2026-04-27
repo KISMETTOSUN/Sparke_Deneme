@@ -73,6 +73,7 @@ function ConnectionsView() {
     setSelectedApp(app);
     setFormFeedback({ type: null, message: '' });
 
+    // Initialize form with existing config if available
     try {
       const resp = await fetchConnectionConfig(app.id);
       if (resp && resp.config) {
@@ -124,6 +125,7 @@ function ConnectionsView() {
   return (
     <div className="connections-view fade-in">
       <div className="dashboard-sections" style={{ gridTemplateColumns: '1fr 1.5fr' }}>
+        {/* Left Side: App Selection */}
         <div className="section-card">
           <div className="section-header">
             <h2>Uygulama Seçimi</h2>
@@ -229,6 +231,7 @@ function ConnectionsView() {
           )}
         </div>
       </div>
+
       <style dangerouslySetInnerHTML={{
         __html: `
         .list-item.active-item {

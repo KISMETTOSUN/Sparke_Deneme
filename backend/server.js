@@ -713,8 +713,77 @@ const checkGmailTriggers = async () => {
     });
 };
 
+const checkWeatherTriggers = async () => {
+    db.query('SELECT * FROM triggers WHERE type = "event" AND enabled = 1', async (err, results) => {
+        if (err || !results || results.length === 0) return;
+
+        const now = new Date();
+        for (const trigger of results) {
+            let config;
+            try { config = JSON.parse(trigger.config); } catch (e) { continue; }
+            if (config.connectorId !== 'weatherstack') continue;
+
+            const intervalMinutes = parseInt(config.interval) || 5;
+            if (now.getTime() - (trigger.last_run ? new Date(trigger.last_run).getTime() : 0) < intervalMinutes * 60 * 1000) continue;
+
+            db.query('UPDATE triggers SET last_run = NOW() WHERE id = ?', [trigger.id]);
+
+            db.query('SELECT config FROM external_connections WHERE app_name = "weatherstack" LIMIT 1', async (connErr, connResults) => {
+                if (connErr || !connResults || connResults.length === 0) {
+                    logTriggerEvent(trigger.id, 'Hava Durumu bağlantı ayarları bulunamadı', 'ERROR');
+                    return;
+                }
+
+                let wConfig;
+                try {
+                    wConfig = JSON.parse(connResults[0].config);
+                    if (wConfig.password) wConfig.password = decrypt(wConfig.password);
+                } catch (e) { return; }
+
+                if (!wConfig.api_url || !wConfig.password || !config.city || !config.condition || !config.target_temp) {
+                    logTriggerEvent(trigger.id, 'Eksik hava durumu tetikleyici veya bağlantı ayarı', 'ERROR');
+                    return;
+                }
+
+                try {
+                    // API request to WeatherStack
+                    // http://api.weatherstack.com/current?access_key=YOUR_ACCESS_KEY&query=New York
+                    const baseUrl = wConfig.api_url.endsWith('/') ? wConfig.api_url.slice(0, -1) : wConfig.api_url;
+                    const url = `${baseUrl}/current?access_key=${wConfig.password}&query=${encodeURIComponent(config.city)}`;
+
+                    const res = await fetch(url);
+                    const data = await res.json();
+
+                    if (data.error) {
+                        logTriggerEvent(trigger.id, `WeatherStack Hatası: ${data.error.info}`, 'ERROR');
+                        return;
+                    }
+
+                    const temp = data.current.temperature;
+                    const target = parseFloat(config.target_temp);
+                    let shouldTrigger = false;
+
+                    if (config.condition === '>' && temp > target) shouldTrigger = true;
+                    if (config.condition === '<' && temp < target) shouldTrigger = true;
+                    if (config.condition === '==' && temp === target) shouldTrigger = true;
+
+                    if (shouldTrigger) {
+                        logTriggerEvent(trigger.id, `${config.city} şehrinde sıcaklık ${temp}°C! Koşul sağlandı, robot tetikleniyor.`, 'INFO');
+                        await triggerUiPathFromEvent(trigger.user_id, trigger);
+                    } else {
+                        // don't log success if condition not met to avoid spam
+                    }
+                } catch (e) {
+                    logTriggerEvent(trigger.id, `Hava Durumu API Hatası: ${e.message}`, 'ERROR');
+                }
+            });
+        }
+    });
+};
+
 // Poll every 30 seconds for immediate feedback during testing
 setInterval(checkGmailTriggers, 30000);
+setInterval(checkWeatherTriggers, 30000);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  LayoutDashboard, Bot, PlayCircle, Calendar, 
-  Bell, Menu, X, Activity, Play, 
+import {
+  LayoutDashboard, Bot, PlayCircle, Calendar,
+  Bell, Menu, X, Activity, Play,
   CheckCircle, XCircle, Loader2, LogOut,
   Settings, Link, Zap, Plus,
   Folder, ArrowRight, Trash2, Edit3,
   ToggleLeft, ToggleRight
 } from 'lucide-react';
-import { 
-  fetchRobots, fetchActivity, triggerRobot, fetchFolders, 
+import {
+  fetchRobots, fetchActivity, triggerRobot, fetchFolders,
   fetchProcesses, fetchRobotsForFolder, startUiPathJob,
   fetchTriggers, saveTrigger, deleteTrigger, fetchTriggerLogs
 } from './api';
@@ -28,7 +28,7 @@ function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [activeTriggerTab, setActiveTriggerTab] = useState('event');
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newTriggerData, setNewTriggerData] = useState({ 
+  const [newTriggerData, setNewTriggerData] = useState({
     name: '', folderId: '', processKey: '', processName: '', robotId: '', robotName: '', method: 'GET',
     connectorId: '', event: '', interval: '5'
   });
@@ -44,12 +44,12 @@ function App() {
     // Tam Bypass: Admin olarak her zaman oturum açılmış kabul et
     setInitialized(true);
     setUser({ id: 1, username: 'admin' });
-    
+
     // Verileri yükle
     loadData();
     loadTriggers();
     loadLogs();
-    
+
     const interval = setInterval(() => {
       loadData();
       loadLogs();
@@ -61,14 +61,14 @@ function App() {
     try {
       const data = await fetchTriggerLogs();
       setTriggerLogs(data || []);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadTriggers = async () => {
     try {
       const data = await fetchTriggers();
       setTriggers(data || []);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   useEffect(() => {
@@ -105,7 +105,7 @@ function App() {
 
   const handleSaveTrigger = async () => {
     if (!newTriggerData.name) return alert('Lütfen bir isim girin.');
-    
+
     try {
       if (editingTriggerId) {
         const trigger = { ...newTriggerData, id: editingTriggerId, type: activeTriggerTab, enabled: true };
@@ -121,7 +121,7 @@ function App() {
       }
       loadTriggers();
       setShowAddForm(false);
-      setNewTriggerData({ 
+      setNewTriggerData({
         name: '', folderId: '', processKey: '', processName: '', robotId: '', robotName: '', method: 'GET',
         connectorId: '', event: '', interval: '5'
       });
@@ -155,7 +155,7 @@ function App() {
     try {
       await saveTrigger({ ...trigger, enabled: !trigger.enabled });
       loadTriggers();
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const [testingTriggerId, setTestingTriggerId] = useState(null);
@@ -165,8 +165,8 @@ function App() {
     try {
       if (trigger.type === 'api' || trigger.type === 'event') {
         if (!trigger.folderId || !trigger.processKey || !trigger.robotId) {
-           alert('Bu trigger için UiPath bilgileri eksik (Klasör, Robot veya Süreç). Lütfen düzenleyin.');
-           return;
+          alert('Bu trigger için UiPath bilgileri eksik (Klasör, Robot veya Süreç). Lütfen düzenleyin.');
+          return;
         }
         await startUiPathJob(trigger.folderId, trigger.processKey, [parseInt(trigger.robotId)]);
         alert(`${trigger.name} başarıyla test edildi. Robot başlatıldı!`);
@@ -254,7 +254,7 @@ function App() {
         </ul>
         <div className="sidebar-footer">
           <div className="user-profile">
-            <div className="avatar">{user.username.substring(0,2).toUpperCase()}</div>
+            <div className="avatar">{user.username.substring(0, 2).toUpperCase()}</div>
             <div className="user-info">
               <p className="user-name">{user.username}</p>
               <p className="user-role">Operatör</p>
@@ -283,7 +283,7 @@ function App() {
               <Bell size={20} />
               <span className="badge"></span>
             </button>
-            <div className="header-avatar">{user.username.substring(0,2).toUpperCase()}</div>
+            <div className="header-avatar">{user.username.substring(0, 2).toUpperCase()}</div>
           </div>
         </header>
 
@@ -330,7 +330,7 @@ function App() {
                           <h3>{robot.name} {robot.user_id ? '👤' : ''}</h3>
                           <p>Son çalışma: {robot.last_run || 'Hiç'}</p>
                         </div>
-                        <button 
+                        <button
                           className="btn btn-primary"
                           disabled={triggering === robot.id || robot.status === 'running'}
                           onClick={() => handleTrigger(robot.id)}
@@ -384,13 +384,13 @@ function App() {
             <div className="section-card fade-in">
               <div className="tab-menu" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: '16px' }}>
-                  <button 
+                  <button
                     className={`tab-button ${activeTriggerTab === 'event' ? 'active' : ''}`}
                     onClick={() => { setActiveTriggerTab('event'); setShowAddForm(false); }}
                   >
                     <Activity size={18} /> Event Trigger
                   </button>
-                  <button 
+                  <button
                     className={`tab-button ${activeTriggerTab === 'api' ? 'active' : ''}`}
                     onClick={() => { setActiveTriggerTab('api'); setShowAddForm(false); }}
                   >
@@ -403,7 +403,7 @@ function App() {
                   </button>
                 )}
               </div>
-              
+
               <div className="trigger-content fade-in">
                 {showAddForm ? (
                   <div className="section-card" style={{ border: '1px solid var(--primary)', background: 'rgba(237, 94, 118, 0.02)' }}>
@@ -412,15 +412,15 @@ function App() {
                         <h2>{editingTriggerId ? 'Triggerı Düzenle' : `Yeni ${activeTriggerTab === 'api' ? 'API' : 'Event'} Trigger Oluştur`}</h2>
                         <p>Lütfen trigger detaylarını doldurun.</p>
                       </div>
-                      <button className="icon-btn" onClick={() => { setShowAddForm(false); setEditingTriggerId(null); setAvailableRobots([]); setAvailableProcesses([]); }}><X size={20}/></button>
+                      <button className="icon-btn" onClick={() => { setShowAddForm(false); setEditingTriggerId(null); setAvailableRobots([]); setAvailableProcesses([]); }}><X size={20} /></button>
                     </div>
 
                     <div className="form-layout" style={{ maxWidth: '100%' }}>
                       <div className="form-group">
                         <label>Trigger İsmi</label>
-                        <input 
-                          type="text" className="form-control" placeholder="Örn: Gmail Invoice Trigger" 
-                          value={newTriggerData.name} onChange={e => setNewTriggerData({...newTriggerData, name: e.target.value})}
+                        <input
+                          type="text" className="form-control" placeholder="Örn: Gmail Invoice Trigger"
+                          value={newTriggerData.name} onChange={e => setNewTriggerData({ ...newTriggerData, name: e.target.value })}
                         />
                       </div>
 
@@ -428,25 +428,27 @@ function App() {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                           <div className="form-group">
                             <label>Connector</label>
-                            <select className="form-control" value={newTriggerData.connectorId} onChange={e => setNewTriggerData({...newTriggerData, connectorId: e.target.value})}>
+                            <select className="form-control" value={newTriggerData.connectorId} onChange={e => setNewTriggerData({ ...newTriggerData, connectorId: e.target.value })}>
                               <option value="">Seçiniz...</option>
                               <option value="gmail">Gmail</option>
                               <option value="influxdb">InfluxDB</option>
                               <option value="notion">Notion</option>
+                              <option value="weatherstack">Hava Durumu (WeatherStack)</option>
                             </select>
                           </div>
                           <div className="form-group">
                             <label>Olay (Event)</label>
-                            <select className="form-control" value={newTriggerData.event} onChange={e => setNewTriggerData({...newTriggerData, event: e.target.value})} disabled={!newTriggerData.connectorId}>
+                            <select className="form-control" value={newTriggerData.event} onChange={e => setNewTriggerData({ ...newTriggerData, event: e.target.value })} disabled={!newTriggerData.connectorId}>
                               <option value="">Seçiniz...</option>
                               {newTriggerData.connectorId === 'gmail' && <option value="new_email">Yeni Mail Gelince</option>}
                               {newTriggerData.connectorId === 'influxdb' && <option value="data_threshold">Veri Eşik Değeri Aşınca</option>}
                               {newTriggerData.connectorId === 'notion' && <option value="new_page">Yeni Sayfa Eklenince</option>}
+                              {newTriggerData.connectorId === 'weatherstack' && <option value="weather_change">Hava Durumu Değişince</option>}
                             </select>
                           </div>
                           <div className="form-group">
                             <label>Kontrol Sıklığı (Dakika)</label>
-                            <select className="form-control" value={newTriggerData.interval} onChange={e => setNewTriggerData({...newTriggerData, interval: e.target.value})}>
+                            <select className="form-control" value={newTriggerData.interval} onChange={e => setNewTriggerData({ ...newTriggerData, interval: e.target.value })}>
                               <option value="1">1 Dakika</option>
                               <option value="3">3 Dakika</option>
                               <option value="5">5 Dakika</option>
@@ -458,11 +460,39 @@ function App() {
                         </div>
                       )}
 
-                      <div className="form-group">
+                      {activeTriggerTab === 'event' && newTriggerData.connectorId === 'weatherstack' && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginTop: '16px' }}>
+                          <div className="form-group">
+                            <label>Şehir (Örn: Istanbul)</label>
+                            <input
+                              type="text" className="form-control" placeholder="Istanbul"
+                              value={newTriggerData.city || ''} onChange={e => setNewTriggerData({ ...newTriggerData, city: e.target.value })}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>Koşul</label>
+                            <select className="form-control" value={newTriggerData.condition || ''} onChange={e => setNewTriggerData({ ...newTriggerData, condition: e.target.value })}>
+                              <option value="">Seçiniz...</option>
+                              <option value=">">Büyükse (&gt;)</option>
+                              <option value="<">Küçükse (&lt;)</option>
+                              <option value="==">Eşitse (=)</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label>Hedef Sıcaklık (°C)</label>
+                            <input
+                              type="number" className="form-control" placeholder="Örn: 30"
+                              value={newTriggerData.target_temp || ''} onChange={e => setNewTriggerData({ ...newTriggerData, target_temp: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="form-group" style={{ marginTop: '16px' }}>
                         <label>Klasör (Folder)</label>
-                        <select 
-                          className="form-control" 
-                          value={newTriggerData.folderId} 
+                        <select
+                          className="form-control"
+                          value={newTriggerData.folderId}
                           onChange={e => handleFolderChange(e.target.value)}
                         >
                           <option value="">Klasör Seçin...</option>
@@ -472,50 +502,50 @@ function App() {
                         </select>
                       </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                          <div className="form-group">
-                            <label>Robot {loadingFormItems && <Loader2 className="spin" size={14} />}</label>
-                            <select 
-                              className="form-control" 
-                              value={newTriggerData.robotId} 
-                              onChange={e => {
-                                const r = availableRobots.find(x => x.Id.toString() === e.target.value);
-                                setNewTriggerData({...newTriggerData, robotId: e.target.value, robotName: r ? r.Name : ''});
-                              }}
-                              disabled={!newTriggerData.folderId || loadingFormItems}
-                            >
-                              <option value="">Robot Seçin...</option>
-                              {availableRobots.map(r => (
-                                <option key={r.Id} value={r.Id}>{r.Name}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="form-group">
-                            <label>Süreç (Process) {loadingFormItems && <Loader2 className="spin" size={14} />}</label>
-                            <select 
-                              className="form-control" 
-                              value={newTriggerData.processKey} 
-                              onChange={e => {
-                                const p = availableProcesses.find(x => x.Key === e.target.value);
-                                setNewTriggerData({...newTriggerData, processKey: e.target.value, processName: p ? p.ProcessKey : ''});
-                              }}
-                              disabled={!newTriggerData.folderId || loadingFormItems}
-                            >
-                              <option value="">Süreç Seçin...</option>
-                              {availableProcesses.map(p => (
-                                <option key={p.Id} value={p.Key}>{p.ProcessKey}</option>
-                              ))}
-                            </select>
-                          </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                        <div className="form-group">
+                          <label>Robot {loadingFormItems && <Loader2 className="spin" size={14} />}</label>
+                          <select
+                            className="form-control"
+                            value={newTriggerData.robotId}
+                            onChange={e => {
+                              const r = availableRobots.find(x => x.Id.toString() === e.target.value);
+                              setNewTriggerData({ ...newTriggerData, robotId: e.target.value, robotName: r ? r.Name : '' });
+                            }}
+                            disabled={!newTriggerData.folderId || loadingFormItems}
+                          >
+                            <option value="">Robot Seçin...</option>
+                            {availableRobots.map(r => (
+                              <option key={r.Id} value={r.Id}>{r.Name}</option>
+                            ))}
+                          </select>
                         </div>
+                        <div className="form-group">
+                          <label>Süreç (Process) {loadingFormItems && <Loader2 className="spin" size={14} />}</label>
+                          <select
+                            className="form-control"
+                            value={newTriggerData.processKey}
+                            onChange={e => {
+                              const p = availableProcesses.find(x => x.Key === e.target.value);
+                              setNewTriggerData({ ...newTriggerData, processKey: e.target.value, processName: p ? p.ProcessKey : '' });
+                            }}
+                            disabled={!newTriggerData.folderId || loadingFormItems}
+                          >
+                            <option value="">Süreç Seçin...</option>
+                            {availableProcesses.map(p => (
+                              <option key={p.Id} value={p.Key}>{p.ProcessKey}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
 
                       {activeTriggerTab === 'api' && (
                         <div className="form-group">
                           <label>Method</label>
-                          <select 
-                            className="form-control" 
-                            value={newTriggerData.method} 
-                            onChange={e => setNewTriggerData({...newTriggerData, method: e.target.value})}
+                          <select
+                            className="form-control"
+                            value={newTriggerData.method}
+                            onChange={e => setNewTriggerData({ ...newTriggerData, method: e.target.value })}
                           >
                             <option value="GET">GET</option>
                             <option value="POST">POST</option>
@@ -551,8 +581,8 @@ function App() {
                                 {trigger.type === 'api' && `${trigger.method} • ${trigger.robotName} • ${trigger.processName}`}
                                 {trigger.type === 'event' && (
                                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <strong>{trigger.connectorId?.toUpperCase()}</strong> ({trigger.event}) • <strong>{trigger.interval} dk</strong> 
-                                    <ArrowRight size={10} /> 
+                                    <strong>{trigger.connectorId?.toUpperCase()}</strong> ({trigger.event}) • <strong>{trigger.interval} dk</strong>
+                                    <ArrowRight size={10} />
                                     {trigger.robotName} • {trigger.processName}
                                   </span>
                                 )}
@@ -560,28 +590,28 @@ function App() {
                             </div>
                           </div>
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                             <button className="icon-btn" style={{ color: trigger.enabled ? '#4ade80' : '#888' }} title={trigger.enabled ? 'Aktif' : 'Pasif'} onClick={() => toggleTriggerStatus(trigger)}>
-                               {trigger.enabled ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
-                             </button>
-                             <button className="icon-btn" style={{ color: 'var(--primary)' }} title="Düzenle" onClick={() => handleEditTrigger(trigger)}>
-                               <Edit3 size={18} />
-                             </button>
-                             <button className="icon-btn" style={{ color: 'var(--failed)' }} title="Sil" onClick={async () => { 
-                               if(confirm('Silmek istediğinize emin misiniz?')) {
-                                 await deleteTrigger(trigger.id);
-                                 loadTriggers();
-                               } 
-                             }}>
-                               <Trash2 size={18} />
-                             </button>
-                             <button 
-                               className="btn btn-primary" 
-                               style={{ padding: '8px 16px', opacity: trigger.enabled ? 1 : 0.5, cursor: trigger.enabled && !testingTriggerId ? 'pointer' : 'not-allowed' }} 
-                               disabled={!trigger.enabled || testingTriggerId === trigger.id}
-                               onClick={() => handleTestTrigger(trigger)}
-                             >
-                               {testingTriggerId === trigger.id ? <Loader2 className="spin" size={14} /> : 'Test Et'} <ArrowRight size={14} />
-                             </button>
+                            <button className="icon-btn" style={{ color: trigger.enabled ? '#4ade80' : '#888' }} title={trigger.enabled ? 'Aktif' : 'Pasif'} onClick={() => toggleTriggerStatus(trigger)}>
+                              {trigger.enabled ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                            </button>
+                            <button className="icon-btn" style={{ color: 'var(--primary)' }} title="Düzenle" onClick={() => handleEditTrigger(trigger)}>
+                              <Edit3 size={18} />
+                            </button>
+                            <button className="icon-btn" style={{ color: 'var(--failed)' }} title="Sil" onClick={async () => {
+                              if (confirm('Silmek istediğinize emin misiniz?')) {
+                                await deleteTrigger(trigger.id);
+                                loadTriggers();
+                              }
+                            }}>
+                              <Trash2 size={18} />
+                            </button>
+                            <button
+                              className="btn btn-primary"
+                              style={{ padding: '8px 16px', opacity: trigger.enabled ? 1 : 0.5, cursor: trigger.enabled && !testingTriggerId ? 'pointer' : 'not-allowed' }}
+                              disabled={!trigger.enabled || testingTriggerId === trigger.id}
+                              onClick={() => handleTestTrigger(trigger)}
+                            >
+                              {testingTriggerId === trigger.id ? <Loader2 className="spin" size={14} /> : 'Test Et'} <ArrowRight size={14} />
+                            </button>
                           </div>
                         </div>
                       ))}

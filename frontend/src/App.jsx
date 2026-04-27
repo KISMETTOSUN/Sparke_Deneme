@@ -488,6 +488,25 @@ function App() {
                         </div>
                       )}
 
+                      {activeTriggerTab === 'event' && newTriggerData.connectorId === 'influxdb' && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
+                          <div className="form-group">
+                            <label>Measurement (Örn: kapi_sensor)</label>
+                            <input
+                              type="text" className="form-control" placeholder="Measurement Name"
+                              value={newTriggerData.measurement || ''} onChange={e => setNewTriggerData({ ...newTriggerData, measurement: e.target.value })}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>Field (Örn: sayac)</label>
+                            <input
+                              type="text" className="form-control" placeholder="Field Name"
+                              value={newTriggerData.field || ''} onChange={e => setNewTriggerData({ ...newTriggerData, field: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       <div className="form-group" style={{ marginTop: '16px' }}>
                         <label>Klasör (Folder)</label>
                         <select
@@ -596,14 +615,7 @@ function App() {
                             <button className="icon-btn" style={{ color: 'var(--primary)' }} title="Düzenle" onClick={() => handleEditTrigger(trigger)}>
                               <Edit3 size={18} />
                             </button>
-                            <button className="icon-btn" style={{ color: 'var(--failed)' }} title="Sil" onClick={async () => {
-                              if (confirm('Silmek istediğinize emin misiniz?')) {
-                                await deleteTrigger(trigger.id);
-                                loadTriggers();
-                              }
-                            }}>
-                              <Trash2 size={18} />
-                            </button>
+                            {/* Silme yetkisi kullanıcının kalıcı talebi üzerine tamamen devredışı bırakıldı */}
                             <button
                               className="btn btn-primary"
                               style={{ padding: '8px 16px', opacity: trigger.enabled ? 1 : 0.5, cursor: trigger.enabled && !testingTriggerId ? 'pointer' : 'not-allowed' }}

@@ -6,6 +6,10 @@ const jwt = require('jsonwebtoken');
 const { encrypt, decrypt } = require('./encryption');
 const { getUiPathToken, getUiPathODataUrl } = require('./uipath_utils');
 const imaps = require('imap-simple');
+const { InfluxDB } = require('@influxdata/influxdb-client');
+
+const influxStates = new Map(); // Store previous counter values
+
 
 dotenv.config();
 
@@ -781,9 +785,88 @@ const checkWeatherTriggers = async () => {
     });
 };
 
+const checkInfluxDBTriggers = async () => {
+    db.query('SELECT * FROM triggers WHERE type = "event" AND enabled = 1', (err, results) => {
+        if (err || !results || results.length === 0) return;
+
+        const now = new Date();
+        for (const trigger of results) {
+            let config;
+            try { config = JSON.parse(trigger.config); } catch (e) { continue; }
+            if (config.connectorId !== 'influxdb') continue;
+
+            const intervalMinutes = parseInt(config.interval) || 1;
+            if (now.getTime() - (trigger.last_run ? new Date(trigger.last_run).getTime() : 0) < intervalMinutes * 60 * 1000) continue;
+
+            db.query('UPDATE triggers SET last_run = NOW() WHERE id = ?', [trigger.id]);
+
+            db.query('SELECT config FROM external_connections WHERE app_name = "influxdb" LIMIT 1', async (connErr, connResults) => {
+                if (connErr || !connResults || connResults.length === 0) {
+                    logTriggerEvent(trigger.id, 'InfluxDB bağlantı ayarları bulunamadı', 'ERROR');
+                    return;
+                }
+
+                let inConfig;
+                try {
+                    inConfig = JSON.parse(connResults[0].config);
+                    if (inConfig.token) inConfig.token = decrypt(inConfig.token);
+                } catch (e) { return; }
+
+                if (!inConfig.url || !inConfig.token || !inConfig.organization || !inConfig.bucket || !config.measurement || !config.field) {
+                    logTriggerEvent(trigger.id, 'Eksik InfluxDB tetikleyici veya bağlantı ayarı', 'ERROR');
+                    return;
+                }
+
+                try {
+                    const client = new InfluxDB({ url: inConfig.url, token: inConfig.token });
+                    const queryApi = client.getQueryApi(inConfig.organization);
+                    const query = `
+                        from(bucket: "${inConfig.bucket}")
+                            |> range(start: -1d)
+                            |> filter(fn: (r) => r._measurement == "${config.measurement}")
+                            |> filter(fn: (r) => r._field == "${config.field}")
+                            |> last()
+                    `;
+
+                    let latestValue = null;
+                    queryApi.queryRows(query, {
+                        next: (row, tableMeta) => {
+                            const o = tableMeta.toObject(row);
+                            if (o._value !== undefined) latestValue = o._value;
+                        },
+                        error: (error) => {
+                            logTriggerEvent(trigger.id, `InfluxDB Sorgu Hatası: ${error.message}`, 'ERROR');
+                        },
+                        complete: async () => {
+                            if (latestValue === null) {
+                                // No data returned
+                                return;
+                            }
+
+                            const previousValue = influxStates.get(trigger.id);
+                            influxStates.set(trigger.id, latestValue);
+
+                            if (previousValue !== undefined && latestValue > previousValue) {
+                                logTriggerEvent(trigger.id, `Kapı/Sensör Tetiklendi! Counter: ${previousValue} -> ${latestValue}`, 'INFO');
+                                await triggerUiPathFromEvent(trigger.user_id, trigger);
+                            } else if (previousValue === undefined) {
+                                logTriggerEvent(trigger.id, `InfluxDB ilk değer okundu: ${latestValue}. Değişim bekleniyor...`, 'INFO');
+                            }
+                        }
+                    });
+
+                } catch (e) {
+                    logTriggerEvent(trigger.id, `InfluxDB Bağlantı/Ayar Hatası: ${e.message}`, 'ERROR');
+                }
+            });
+        }
+    });
+};
+
 // Poll every 30 seconds for immediate feedback during testing
 setInterval(checkGmailTriggers, 30000);
 setInterval(checkWeatherTriggers, 30000);
+setInterval(checkInfluxDBTriggers, 30000);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

@@ -510,13 +510,23 @@ function App() {
                       )}
 
                       {activeTriggerTab === 'event' && newTriggerData.connectorId === 'filewatcher' && (
-                        <div style={{ marginTop: '16px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
                           <div className="form-group">
-                            <label>Dinlenecek Klasör Yolu (Örn: C:\Kullanicilar\Masaustu\Faturalar)</label>
+                            <label>Dinlenecek Klasör Yolu (Örn: C:\Faturalar)</label>
                             <input
                               type="text" className="form-control" placeholder="Mutlak klasör yolu giriniz..."
                               value={newTriggerData.folder_path || ''} onChange={e => setNewTriggerData({ ...newTriggerData, folder_path: e.target.value })}
                             />
+                          </div>
+                          <div className="form-group">
+                            <label>Dosya / Uzantı Tipi</label>
+                            <select className="form-control" value={newTriggerData.file_extension || ''} onChange={e => setNewTriggerData({ ...newTriggerData, file_extension: e.target.value })}>
+                              <option value="*.*">Tüm Dosyalar (*.*)</option>
+                              <option value=".pdf">PDF Dosyaları (.pdf)</option>
+                              <option value=".xls,.xlsx">Excel Dosyaları (.xls, .xlsx)</option>
+                              <option value=".doc,.docx">Word Dosyaları (.doc, .docx)</option>
+                              <option value="folder">Sadece Yeni Klasörler</option>
+                            </select>
                           </div>
                         </div>
                       )}

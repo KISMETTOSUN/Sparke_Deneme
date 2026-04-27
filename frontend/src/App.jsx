@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Bot, PlayCircle, Calendar, 
-  Zap, Bell, Menu, X, Activity, Play, 
+  Bell, Menu, X, Activity, Play, 
   CheckCircle, XCircle, Loader2, LogOut,
-  Settings, Link
+  Settings, Link, Zap, Plus,
+  Folder, ArrowRight, Trash2, Edit3,
+  ToggleLeft, ToggleRight
 } from 'lucide-react';
-import { fetchRobots, fetchActivity, triggerRobot } from './api';
+import { 
+  fetchRobots, fetchActivity, triggerRobot, fetchFolders, 
+  fetchProcesses, fetchRobotsForFolder, startUiPathJob,
+  fetchTriggers, saveTrigger, deleteTrigger, fetchTriggerLogs
+} from './api';
 import Login from './Login';
 import ConfigurationView from './ConfigurationView';
 import RobotsView from './RobotsView';
@@ -13,30 +19,164 @@ import ConnectionsView from './ConnectionsView';
 import './App.css';
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState({ username: 'admin' });
   const [robots, setRobots] = useState([]);
   const [activity, setActivity] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [triggering, setTriggering] = useState(null);
   const [initialized, setInitialized] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
+  const [activeTriggerTab, setActiveTriggerTab] = useState('event');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newTriggerData, setNewTriggerData] = useState({ 
+    name: '', folderId: '', processKey: '', processName: '', robotId: '', robotName: '', method: 'GET',
+    connectorId: '', event: '', interval: '5'
+  });
+  const [triggers, setTriggers] = useState([]);
+  const [editingTriggerId, setEditingTriggerId] = useState(null);
+  const [triggerLogs, setTriggerLogs] = useState([]);
+  const [availableFolders, setAvailableFolders] = useState([]);
+  const [availableRobots, setAvailableRobots] = useState([]);
+  const [availableProcesses, setAvailableProcesses] = useState([]);
+  const [loadingFormItems, setLoadingFormItems] = useState(false);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
-    if (savedUser && token) {
-      setUser(JSON.parse(savedUser));
-    }
+    // Tam Bypass: Admin olarak her zaman oturum açılmış kabul et
     setInitialized(true);
+    setUser({ id: 1, username: 'admin' });
+    
+    // Verileri yükle
+    loadData();
+    loadTriggers();
+    loadLogs();
+    
+    const interval = setInterval(() => {
+      loadData();
+      loadLogs();
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
+  const loadLogs = async () => {
+    try {
+      const data = await fetchTriggerLogs();
+      setTriggerLogs(data || []);
+    } catch (e) {}
+  };
+
+  const loadTriggers = async () => {
+    try {
+      const data = await fetchTriggers();
+      setTriggers(data || []);
+    } catch (e) {}
+  };
+
   useEffect(() => {
-    if (user) {
-      loadData();
-      const interval = setInterval(loadData, 5000);
-      return () => clearInterval(interval);
+    if (currentView === 'event-trigger') {
+      loadFolders();
     }
-  }, [user]);
+  }, [currentView]);
+
+  const loadFolders = async () => {
+    try {
+      const data = await fetchFolders();
+      setAvailableFolders(data || []);
+    } catch (err) {
+      console.error('Error loading folders:', err);
+    }
+  };
+
+  const handleFolderChange = async (folderId) => {
+    setNewTriggerData(prev => ({ ...prev, folderId, robot: '', process: '' }));
+    setLoadingFormItems(true);
+    try {
+      const [robotsData, processesData] = await Promise.all([
+        fetchRobotsForFolder(folderId),
+        fetchProcesses(folderId)
+      ]);
+      setAvailableRobots(robotsData || []);
+      setAvailableProcesses(processesData || []);
+    } catch (err) {
+      console.error('Error loading folder items:', err);
+    } finally {
+      setLoadingFormItems(false);
+    }
+  };
+
+  const handleSaveTrigger = async () => {
+    if (!newTriggerData.name) return alert('Lütfen bir isim girin.');
+    
+    try {
+      if (editingTriggerId) {
+        const trigger = { ...newTriggerData, id: editingTriggerId, type: activeTriggerTab, enabled: true };
+        await saveTrigger(trigger);
+      } else {
+        const trigger = {
+          ...newTriggerData,
+          id: Date.now(), // Temp ID, server will give real one
+          type: activeTriggerTab,
+          enabled: true
+        };
+        await saveTrigger(trigger);
+      }
+      loadTriggers();
+      setShowAddForm(false);
+      setNewTriggerData({ 
+        name: '', folderId: '', processKey: '', processName: '', robotId: '', robotName: '', method: 'GET',
+        connectorId: '', event: '', interval: '5'
+      });
+      setEditingTriggerId(null);
+    } catch (err) {
+      alert('Kaydedilemedi: ' + err.message);
+    }
+  };
+
+  const handleEditTrigger = (trigger) => {
+    setNewTriggerData({
+      name: trigger.name,
+      folderId: trigger.folderId,
+      processKey: trigger.processKey,
+      processName: trigger.processName,
+      robotId: trigger.robotId,
+      robotName: trigger.robotName,
+      method: trigger.method || 'GET',
+      connectorId: trigger.connectorId || '',
+      event: trigger.event || '',
+      interval: trigger.interval || '5'
+    });
+    setEditingTriggerId(trigger.id);
+    setShowAddForm(true);
+    if (trigger.folderId) {
+      handleFolderChange(trigger.folderId);
+    }
+  };
+
+  const toggleTriggerStatus = async (trigger) => {
+    try {
+      await saveTrigger({ ...trigger, enabled: !trigger.enabled });
+      loadTriggers();
+    } catch (e) {}
+  };
+
+  const [testingTriggerId, setTestingTriggerId] = useState(null);
+
+  const handleTestTrigger = async (trigger) => {
+    setTestingTriggerId(trigger.id);
+    try {
+      if (trigger.type === 'api' || trigger.type === 'event') {
+        if (!trigger.folderId || !trigger.processKey || !trigger.robotId) {
+           alert('Bu trigger için UiPath bilgileri eksik (Klasör, Robot veya Süreç). Lütfen düzenleyin.');
+           return;
+        }
+        await startUiPathJob(trigger.folderId, trigger.processKey, [parseInt(trigger.robotId)]);
+        alert(`${trigger.name} başarıyla test edildi. Robot başlatıldı!`);
+      }
+    } catch (err) {
+      alert('Test başarısız: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setTestingTriggerId(null);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -45,17 +185,12 @@ function App() {
       setRobots(robotsData);
       setActivity(activityData);
     } catch (err) {
-      if (err.response?.status === 401 || err.response?.status === 403) {
-        handleLogout();
-      }
       console.error('Error loading data:', err);
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
+    // Logout devre dışı - Her zaman admin
   };
 
   const handleTrigger = async (id) => {
@@ -77,11 +212,8 @@ function App() {
     failed: activity.filter(a => a.status === 'Failed').length
   };
 
-  if (!initialized) return null;
-
-  if (!user) {
-    return <Login onLogin={setUser} />;
-  }
+  // Auth kontrollerini tamamen devre dışı bırakıyoruz
+  if (!initialized) return <div style={{ background: 'var(--bg-main)', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>Yükleniyor...</div>;
 
   return (
     <div className="app-container">
@@ -114,11 +246,13 @@ function App() {
               <Link size={20} /><span>Bağlantılar</span>
             </a>
           </li>
+          <li className={currentView === 'event-trigger' ? 'active' : ''}>
+            <a href="#" onClick={(e) => { e.preventDefault(); setCurrentView('event-trigger'); }}>
+              <Zap size={20} /><span>Event Trigger</span>
+            </a>
+          </li>
         </ul>
         <div className="sidebar-footer">
-          <button className="btn-logout" onClick={handleLogout}>
-             <LogOut size={18} /> <span>Çıkış Yap</span>
-          </button>
           <div className="user-profile">
             <div className="avatar">{user.username.substring(0,2).toUpperCase()}</div>
             <div className="user-info">
@@ -139,6 +273,7 @@ function App() {
                 {currentView === 'configuration' && 'Konfigürasyon'}
                 {currentView === 'robots' && 'Robotlar'}
                 {currentView === 'connections' && 'Bağlantılar'}
+                {currentView === 'event-trigger' && 'Event Trigger'}
               </h1>
               <p>Hoş geldin, {user.username}!</p>
             </div>
@@ -244,6 +379,225 @@ function App() {
           {currentView === 'robots' && <RobotsView />}
 
           {currentView === 'connections' && <ConnectionsView />}
+
+          {currentView === 'event-trigger' && (
+            <div className="section-card fade-in">
+              <div className="tab-menu" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  <button 
+                    className={`tab-button ${activeTriggerTab === 'event' ? 'active' : ''}`}
+                    onClick={() => { setActiveTriggerTab('event'); setShowAddForm(false); }}
+                  >
+                    <Activity size={18} /> Event Trigger
+                  </button>
+                  <button 
+                    className={`tab-button ${activeTriggerTab === 'api' ? 'active' : ''}`}
+                    onClick={() => { setActiveTriggerTab('api'); setShowAddForm(false); }}
+                  >
+                    <Zap size={18} /> API Trigger
+                  </button>
+                </div>
+                {!showAddForm && (
+                  <button className="btn btn-primary" onClick={() => setShowAddForm(true)}>
+                    <Plus size={16} /> Yeni {activeTriggerTab === 'event' ? 'Event' : 'API'} Trigger Ekle
+                  </button>
+                )}
+              </div>
+              
+              <div className="trigger-content fade-in">
+                {showAddForm ? (
+                  <div className="section-card" style={{ border: '1px solid var(--primary)', background: 'rgba(237, 94, 118, 0.02)' }}>
+                    <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <div>
+                        <h2>{editingTriggerId ? 'Triggerı Düzenle' : `Yeni ${activeTriggerTab === 'api' ? 'API' : 'Event'} Trigger Oluştur`}</h2>
+                        <p>Lütfen trigger detaylarını doldurun.</p>
+                      </div>
+                      <button className="icon-btn" onClick={() => { setShowAddForm(false); setEditingTriggerId(null); setAvailableRobots([]); setAvailableProcesses([]); }}><X size={20}/></button>
+                    </div>
+
+                    <div className="form-layout" style={{ maxWidth: '100%' }}>
+                      <div className="form-group">
+                        <label>Trigger İsmi</label>
+                        <input 
+                          type="text" className="form-control" placeholder="Örn: Gmail Invoice Trigger" 
+                          value={newTriggerData.name} onChange={e => setNewTriggerData({...newTriggerData, name: e.target.value})}
+                        />
+                      </div>
+
+                      {activeTriggerTab === 'event' && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                          <div className="form-group">
+                            <label>Connector</label>
+                            <select className="form-control" value={newTriggerData.connectorId} onChange={e => setNewTriggerData({...newTriggerData, connectorId: e.target.value})}>
+                              <option value="">Seçiniz...</option>
+                              <option value="gmail">Gmail</option>
+                              <option value="influxdb">InfluxDB</option>
+                              <option value="notion">Notion</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label>Olay (Event)</label>
+                            <select className="form-control" value={newTriggerData.event} onChange={e => setNewTriggerData({...newTriggerData, event: e.target.value})} disabled={!newTriggerData.connectorId}>
+                              <option value="">Seçiniz...</option>
+                              {newTriggerData.connectorId === 'gmail' && <option value="new_email">Yeni Mail Gelince</option>}
+                              {newTriggerData.connectorId === 'influxdb' && <option value="data_threshold">Veri Eşik Değeri Aşınca</option>}
+                              {newTriggerData.connectorId === 'notion' && <option value="new_page">Yeni Sayfa Eklenince</option>}
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label>Kontrol Sıklığı (Dakika)</label>
+                            <select className="form-control" value={newTriggerData.interval} onChange={e => setNewTriggerData({...newTriggerData, interval: e.target.value})}>
+                              <option value="1">1 Dakika</option>
+                              <option value="3">3 Dakika</option>
+                              <option value="5">5 Dakika</option>
+                              <option value="10">10 Dakika</option>
+                              <option value="30">30 Dakika</option>
+                              <option value="60">60 Dakika</option>
+                            </select>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="form-group">
+                        <label>Klasör (Folder)</label>
+                        <select 
+                          className="form-control" 
+                          value={newTriggerData.folderId} 
+                          onChange={e => handleFolderChange(e.target.value)}
+                        >
+                          <option value="">Klasör Seçin...</option>
+                          {availableFolders.map(f => (
+                            <option key={f.Id} value={f.Id}>{f.DisplayName}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                          <div className="form-group">
+                            <label>Robot {loadingFormItems && <Loader2 className="spin" size={14} />}</label>
+                            <select 
+                              className="form-control" 
+                              value={newTriggerData.robotId} 
+                              onChange={e => {
+                                const r = availableRobots.find(x => x.Id.toString() === e.target.value);
+                                setNewTriggerData({...newTriggerData, robotId: e.target.value, robotName: r ? r.Name : ''});
+                              }}
+                              disabled={!newTriggerData.folderId || loadingFormItems}
+                            >
+                              <option value="">Robot Seçin...</option>
+                              {availableRobots.map(r => (
+                                <option key={r.Id} value={r.Id}>{r.Name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label>Süreç (Process) {loadingFormItems && <Loader2 className="spin" size={14} />}</label>
+                            <select 
+                              className="form-control" 
+                              value={newTriggerData.processKey} 
+                              onChange={e => {
+                                const p = availableProcesses.find(x => x.Key === e.target.value);
+                                setNewTriggerData({...newTriggerData, processKey: e.target.value, processName: p ? p.ProcessKey : ''});
+                              }}
+                              disabled={!newTriggerData.folderId || loadingFormItems}
+                            >
+                              <option value="">Süreç Seçin...</option>
+                              {availableProcesses.map(p => (
+                                <option key={p.Id} value={p.Key}>{p.ProcessKey}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                      {activeTriggerTab === 'api' && (
+                        <div className="form-group">
+                          <label>Method</label>
+                          <select 
+                            className="form-control" 
+                            value={newTriggerData.method} 
+                            onChange={e => setNewTriggerData({...newTriggerData, method: e.target.value})}
+                          >
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                          </select>
+                        </div>
+                      )}
+
+                      <div style={{ marginTop: '24px', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                        <button className="btn" onClick={() => setShowAddForm(false)}>İptal</button>
+                        <button className="btn btn-primary" onClick={handleSaveTrigger}>
+                          <CheckCircle size={16} /> Trigger'ı Kaydet
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="trigger-list">
+                      {triggers.filter(t => t.type === activeTriggerTab).map(trigger => (
+                        <div key={trigger.id} className="list-item fade-in" style={{ marginBottom: '12px', opacity: trigger.enabled ? 1 : 0.6, background: trigger.enabled ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.01)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
+                            <div style={{ padding: '10px', borderRadius: '10px', background: trigger.enabled ? 'rgba(237, 94, 118, 0.1)' : 'rgba(255,255,255,0.05)', color: trigger.enabled ? 'var(--primary)' : 'var(--text-dim)' }}>
+                              {trigger.type === 'api' ? <Zap size={20} /> : <Activity size={20} />}
+                            </div>
+                            <div className="item-info">
+                              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {trigger.name}
+                                {!trigger.enabled && <span style={{ fontSize: '0.65rem', background: 'var(--text-dim)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>PASİF</span>}
+                              </h3>
+                              <p style={{ fontSize: '0.8rem' }}>
+                                {trigger.type === 'api' && `${trigger.method} • ${trigger.robotName} • ${trigger.processName}`}
+                                {trigger.type === 'event' && (
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <strong>{trigger.connectorId?.toUpperCase()}</strong> ({trigger.event}) • <strong>{trigger.interval} dk</strong> 
+                                    <ArrowRight size={10} /> 
+                                    {trigger.robotName} • {trigger.processName}
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                             <button className="icon-btn" style={{ color: trigger.enabled ? '#4ade80' : '#888' }} title={trigger.enabled ? 'Aktif' : 'Pasif'} onClick={() => toggleTriggerStatus(trigger)}>
+                               {trigger.enabled ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                             </button>
+                             <button className="icon-btn" style={{ color: 'var(--primary)' }} title="Düzenle" onClick={() => handleEditTrigger(trigger)}>
+                               <Edit3 size={18} />
+                             </button>
+                             <button className="icon-btn" style={{ color: 'var(--failed)' }} title="Sil" onClick={async () => { 
+                               if(confirm('Silmek istediğinize emin misiniz?')) {
+                                 await deleteTrigger(trigger.id);
+                                 loadTriggers();
+                               } 
+                             }}>
+                               <Trash2 size={18} />
+                             </button>
+                             <button 
+                               className="btn btn-primary" 
+                               style={{ padding: '8px 16px', opacity: trigger.enabled ? 1 : 0.5, cursor: trigger.enabled && !testingTriggerId ? 'pointer' : 'not-allowed' }} 
+                               disabled={!trigger.enabled || testingTriggerId === trigger.id}
+                               onClick={() => handleTestTrigger(trigger)}
+                             >
+                               {testingTriggerId === trigger.id ? <Loader2 className="spin" size={14} /> : 'Test Et'} <ArrowRight size={14} />
+                             </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {triggers.filter(t => t.type === activeTriggerTab).length === 0 && (
+                        <div style={{ padding: '40px', textAlign: 'center', border: '2px dashed var(--border)', borderRadius: '20px' }}>
+                          <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>Henüz bir {activeTriggerTab === 'api' ? 'API' : 'Event'} Trigger tanımlanmamış.</p>
+                          {activeTriggerTab === 'api' ? <Zap size={48} color="var(--border)" /> : <Activity size={48} color="var(--border)" />}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

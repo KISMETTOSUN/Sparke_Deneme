@@ -317,7 +317,8 @@ app.post('/api/connections/:type', authenticateToken, async (req, res) => {
     // Encrypt sensitive fields
     Object.keys(config).forEach(key => {
         if (key.toLowerCase().includes('password') || key.toLowerCase().includes('token') || key.toLowerCase().includes('secret')) {
-            config[key] = encrypt(config[key]);
+            let cleanValue = (config[key] || '').replace(/\s+/g, '');
+            config[key] = encrypt(cleanValue);
         }
     });
 

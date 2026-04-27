@@ -7,8 +7,10 @@ const { encrypt, decrypt } = require('./encryption');
 const { getUiPathToken, getUiPathODataUrl } = require('./uipath_utils');
 const imaps = require('imap-simple');
 const { InfluxDB } = require('@influxdata/influxdb-client');
+const fs = require('fs');
 
 const influxStates = new Map(); // Store previous counter values
+const fileStates = new Map(); // Store previous file counts for folders
 
 
 dotenv.config();
@@ -839,6 +841,49 @@ const checkInfluxDBTriggers = async () => {
 setInterval(checkGmailTriggers, 30000);
 setInterval(checkWeatherTriggers, 30000);
 setInterval(checkInfluxDBTriggers, 30000);
+
+const checkFileTriggers = async () => {
+    db.query('SELECT * FROM triggers WHERE type = "event" AND enabled = 1', (err, results) => {
+        if (err || !results || results.length === 0) return;
+
+        const now = new Date();
+        for (const trigger of results) {
+            let config;
+            try { config = JSON.parse(trigger.config); } catch (e) { continue; }
+            if (config.connectorId !== 'filewatcher' || !config.folder_path) continue;
+
+            const intervalMinutes = parseInt(config.interval) || 1;
+            if (now.getTime() - (trigger.last_run ? new Date(trigger.last_run).getTime() : 0) < intervalMinutes * 60 * 1000) continue;
+
+            db.query('UPDATE triggers SET last_run = NOW() WHERE id = ?', [trigger.id]);
+
+            try {
+                if (!fs.existsSync(config.folder_path)) {
+                    logTriggerEvent(trigger.id, `HATA: Klasör bulunamadı veya erişilemiyor -> ${config.folder_path}`, 'ERROR');
+                    continue;
+                }
+
+                const files = fs.readdirSync(config.folder_path);
+                const currentFileCount = files.length;
+                const previousFileCount = fileStates.get(trigger.id);
+
+                fileStates.set(trigger.id, currentFileCount);
+
+                if (previousFileCount !== undefined && currentFileCount > previousFileCount) {
+                    const diff = currentFileCount - previousFileCount;
+                    logTriggerEvent(trigger.id, `📁 Klasöre ${diff} yeni dosya eklendi! Toplam dosya: ${currentFileCount}. Robot tetikleniyor.`, 'INFO');
+                    triggerUiPathFromEvent(trigger.user_id, trigger);
+                } else if (previousFileCount === undefined) {
+                    logTriggerEvent(trigger.id, `Klasör dinlemesi başlatıldı. İçeride ${currentFileCount} dosya var. Yeni dosya bekleniyor...`, 'INFO');
+                }
+            } catch (fsErr) {
+                logTriggerEvent(trigger.id, `Klasör okuma hatası: ${fsErr.message}`, 'ERROR');
+            }
+        }
+    });
+};
+
+setInterval(checkFileTriggers, 30000);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

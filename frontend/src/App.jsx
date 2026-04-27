@@ -434,6 +434,7 @@ function App() {
                               <option value="influxdb">InfluxDB</option>
                               <option value="notion">Notion</option>
                               <option value="weatherstack">Hava Durumu (WeatherStack)</option>
+                              <option value="filewatcher">Yerel Klasör Dinleme</option>
                             </select>
                           </div>
                           <div className="form-group">
@@ -444,6 +445,7 @@ function App() {
                               {newTriggerData.connectorId === 'influxdb' && <option value="data_threshold">Veri Eşik Değeri Aşınca</option>}
                               {newTriggerData.connectorId === 'notion' && <option value="new_page">Yeni Sayfa Eklenince</option>}
                               {newTriggerData.connectorId === 'weatherstack' && <option value="weather_change">Hava Durumu Değişince</option>}
+                              {newTriggerData.connectorId === 'filewatcher' && <option value="new_file">Yeni Dosya Eklendiğinde</option>}
                             </select>
                           </div>
                           <div className="form-group">
@@ -502,6 +504,18 @@ function App() {
                             <input
                               type="text" className="form-control" placeholder="Field Name"
                               value={newTriggerData.field || ''} onChange={e => setNewTriggerData({ ...newTriggerData, field: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {activeTriggerTab === 'event' && newTriggerData.connectorId === 'filewatcher' && (
+                        <div style={{ marginTop: '16px' }}>
+                          <div className="form-group">
+                            <label>Dinlenecek Klasör Yolu (Örn: C:\Kullanicilar\Masaustu\Faturalar)</label>
+                            <input
+                              type="text" className="form-control" placeholder="Mutlak klasör yolu giriniz..."
+                              value={newTriggerData.folder_path || ''} onChange={e => setNewTriggerData({ ...newTriggerData, folder_path: e.target.value })}
                             />
                           </div>
                         </div>

@@ -10,7 +10,7 @@ const { InfluxDB } = require('@influxdata/influxdb-client');
 const fs = require('fs');
 
 const influxStates = new Map(); // Store previous counter values
-const fileStates = new Map(); // Store previous file counts for folders
+const fileStates = new Map(); // Store Set of known filenames per trigger
 
 
 dotenv.config();
@@ -912,15 +912,22 @@ const checkFileTriggers = async () => {
                 }
 
                 const currentCount = matchedFiles.length;
-                const previousCount = fileStates.get(trigger.id);
-                fileStates.set(trigger.id, currentCount);
+                const knownFiles = fileStates.get(trigger.id); // Set of filenames
 
-                if (previousCount === undefined) {
-                    logTriggerEvent(trigger.id, `Klasör dinlemesi başlatıldı. Eşleşen dosya: ${currentCount} (Filtre: ${ext}). Yeni dosya bekleniyor...`, 'INFO');
-                } else if (currentCount > previousCount) {
-                    const diff = currentCount - previousCount;
-                    logTriggerEvent(trigger.id, `📁 ${diff} yeni "${ext}" dosyası algılandı! (${config.folder_path}) Robot tetikleniyor.`, 'INFO');
-                    triggerUiPathFromEvent(trigger.user_id, trigger);
+                if (knownFiles === undefined) {
+                    // First run — remember what's already there, don't trigger
+                    fileStates.set(trigger.id, new Set(matchedFiles));
+                    logTriggerEvent(trigger.id, `Klasör dinlemesi başlatıldı. Mevcut eşleşen dosya: ${currentCount} (Filtre: ${ext}). Yeni dosya bekleniyor...`, 'INFO');
+                } else {
+                    // Find truly new files (not seen before)
+                    const newFiles = matchedFiles.filter(f => !knownFiles.has(f));
+                    // Update known set with all current files
+                    fileStates.set(trigger.id, new Set(matchedFiles));
+
+                    if (newFiles.length > 0) {
+                        logTriggerEvent(trigger.id, `📁 ${newFiles.length} yeni "${ext}" dosyası algılandı: ${newFiles.join(', ')} → Robot tetikleniyor.`, 'INFO');
+                        triggerUiPathFromEvent(trigger.user_id, trigger);
+                    }
                 }
             } catch (fsErr) {
                 logTriggerEvent(trigger.id, `Klasör okuma hatası: ${fsErr.message}`, 'ERROR');

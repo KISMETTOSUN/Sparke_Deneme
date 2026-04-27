@@ -887,22 +887,40 @@ const checkFileTriggers = async () => {
 
             try {
                 if (!fs.existsSync(config.folder_path)) {
-                    logTriggerEvent(trigger.id, `HATA: Klasör bulunamadı veya erişilemiyor -> ${config.folder_path}`, 'ERROR');
+                    logTriggerEvent(trigger.id, `HATA: Klasör bulunamadı -> ${config.folder_path}`, 'ERROR');
                     continue;
                 }
 
-                const files = fs.readdirSync(config.folder_path);
-                const currentFileCount = files.length;
-                const previousFileCount = fileStates.get(trigger.id);
+                const ext = config.file_extension || '*.*';
+                const allEntries = fs.readdirSync(config.folder_path);
 
-                fileStates.set(trigger.id, currentFileCount);
+                let matchedFiles;
+                if (ext === 'folder') {
+                    matchedFiles = allEntries.filter(f => {
+                        try { return fs.statSync(`${config.folder_path}\\${f}`).isDirectory(); } catch (e) { return false; }
+                    });
+                } else if (ext === '*.*') {
+                    matchedFiles = allEntries.filter(f => {
+                        try { return fs.statSync(`${config.folder_path}\\${f}`).isFile(); } catch (e) { return false; }
+                    });
+                } else {
+                    const extensions = ext.split(',').map(e => e.trim().toLowerCase());
+                    matchedFiles = allEntries.filter(f => {
+                        const lower = f.toLowerCase();
+                        return extensions.some(e => lower.endsWith(e));
+                    });
+                }
 
-                if (previousFileCount !== undefined && currentFileCount > previousFileCount) {
-                    const diff = currentFileCount - previousFileCount;
-                    logTriggerEvent(trigger.id, `📁 Klasöre ${diff} yeni dosya eklendi! Toplam dosya: ${currentFileCount}. Robot tetikleniyor.`, 'INFO');
+                const currentCount = matchedFiles.length;
+                const previousCount = fileStates.get(trigger.id);
+                fileStates.set(trigger.id, currentCount);
+
+                if (previousCount === undefined) {
+                    logTriggerEvent(trigger.id, `Klasör dinlemesi başlatıldı. Eşleşen dosya: ${currentCount} (Filtre: ${ext}). Yeni dosya bekleniyor...`, 'INFO');
+                } else if (currentCount > previousCount) {
+                    const diff = currentCount - previousCount;
+                    logTriggerEvent(trigger.id, `📁 ${diff} yeni "${ext}" dosyası algılandı! (${config.folder_path}) Robot tetikleniyor.`, 'INFO');
                     triggerUiPathFromEvent(trigger.user_id, trigger);
-                } else if (previousFileCount === undefined) {
-                    logTriggerEvent(trigger.id, `Klasör dinlemesi başlatıldı. İçeride ${currentFileCount} dosya var. Yeni dosya bekleniyor...`, 'INFO');
                 }
             } catch (fsErr) {
                 logTriggerEvent(trigger.id, `Klasör okuma hatası: ${fsErr.message}`, 'ERROR');

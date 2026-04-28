@@ -5,7 +5,7 @@ import {
   CheckCircle, XCircle, Loader2, LogOut,
   Settings, Link, Zap, Plus,
   Folder, ArrowRight, Trash2, Edit3,
-  ToggleLeft, ToggleRight
+  ToggleLeft, ToggleRight, Copy, Globe
 } from 'lucide-react';
 import {
   fetchRobots, fetchActivity, triggerRobot, fetchFolders,
@@ -385,21 +385,14 @@ function App() {
               <div className="tab-menu" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: '16px' }}>
                   <button
-                    className={`tab-button ${activeTriggerTab === 'event' ? 'active' : ''}`}
-                    onClick={() => { setActiveTriggerTab('event'); setShowAddForm(false); }}
+                    className="tab-button active"
                   >
                     <Activity size={18} /> Event Trigger
-                  </button>
-                  <button
-                    className={`tab-button ${activeTriggerTab === 'api' ? 'active' : ''}`}
-                    onClick={() => { setActiveTriggerTab('api'); setShowAddForm(false); }}
-                  >
-                    <Zap size={18} /> API Trigger
                   </button>
                 </div>
                 {!showAddForm && (
                   <button className="btn btn-primary" onClick={() => setShowAddForm(true)}>
-                    <Plus size={16} /> Yeni {activeTriggerTab === 'event' ? 'Event' : 'API'} Trigger Ekle
+                    <Plus size={16} /> Yeni Event Trigger Ekle
                   </button>
                 )}
               </div>
@@ -409,7 +402,7 @@ function App() {
                   <div className="section-card" style={{ border: '1px solid var(--primary)', background: 'rgba(237, 94, 118, 0.02)' }}>
                     <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <div>
-                        <h2>{editingTriggerId ? 'Triggerı Düzenle' : `Yeni ${activeTriggerTab === 'api' ? 'API' : 'Event'} Trigger Oluştur`}</h2>
+                        <h2>{editingTriggerId ? 'Triggerı Düzenle' : 'Yeni Event Trigger Oluştur'}</h2>
                         <p>Lütfen trigger detaylarını doldurun.</p>
                       </div>
                       <button className="icon-btn" onClick={() => { setShowAddForm(false); setEditingTriggerId(null); setAvailableRobots([]); setAvailableProcesses([]); }}><X size={20} /></button>
@@ -428,9 +421,19 @@ function App() {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                           <div className="form-group">
                             <label>Connector</label>
-                            <select className="form-control" value={newTriggerData.connectorId} onChange={e => setNewTriggerData({ ...newTriggerData, connectorId: e.target.value })}>
+                            <select className="form-control" value={newTriggerData.connectorId} onChange={e => {
+                                const connId = e.target.value;
+                                const updates = { connectorId: connId, event: '' };
+                                if (connId === 'webhook') {
+                                  updates.event = 'post_request';
+                                  updates.webhook_token = newTriggerData.webhook_token || crypto.randomUUID();
+                                }
+                                setNewTriggerData({ ...newTriggerData, ...updates });
+                              }}>
                               <option value="">Seçiniz...</option>
+                              <option value="webhook">🌐 Webhook (HTTP POST)</option>
                               <option value="gmail">Gmail</option>
+                              <option value="telegram">Telegram Bot</option>
                               <option value="influxdb">InfluxDB</option>
                               <option value="notion">Notion</option>
                               <option value="weatherstack">Hava Durumu (WeatherStack)</option>
@@ -441,13 +444,16 @@ function App() {
                             <label>Olay (Event)</label>
                             <select className="form-control" value={newTriggerData.event} onChange={e => setNewTriggerData({ ...newTriggerData, event: e.target.value })} disabled={!newTriggerData.connectorId}>
                               <option value="">Seçiniz...</option>
+                              {newTriggerData.connectorId === 'webhook' && <option value="post_request">POST İsteği Gelince</option>}
                               {newTriggerData.connectorId === 'gmail' && <option value="new_email">Yeni Mail Gelince</option>}
+                              {newTriggerData.connectorId === 'telegram' && <option value="new_message">Mesaj Gelince</option>}
                               {newTriggerData.connectorId === 'influxdb' && <option value="data_threshold">Veri Eşik Değeri Aşınca</option>}
                               {newTriggerData.connectorId === 'notion' && <option value="new_page">Yeni Sayfa Eklenince</option>}
                               {newTriggerData.connectorId === 'weatherstack' && <option value="weather_change">Hava Durumu Değişince</option>}
                               {newTriggerData.connectorId === 'filewatcher' && <option value="new_file">Yeni Dosya Eklendiğinde</option>}
                             </select>
                           </div>
+                          {newTriggerData.connectorId !== 'webhook' && (
                           <div className="form-group">
                             <label>Kontrol Sıklığı (Dakika)</label>
                             <select className="form-control" value={newTriggerData.interval} onChange={e => setNewTriggerData({ ...newTriggerData, interval: e.target.value })}>
@@ -458,6 +464,42 @@ function App() {
                               <option value="30">30 Dakika</option>
                               <option value="60">60 Dakika</option>
                             </select>
+                          </div>
+                          )}
+                        </div>
+                      )}
+
+                      {activeTriggerTab === 'event' && newTriggerData.connectorId === 'webhook' && newTriggerData.webhook_token && (
+                        <div style={{ marginTop: '16px', padding: '16px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: '12px' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', color: '#818cf8', fontWeight: 600 }}>
+                            <Globe size={14} /> Webhook URL — Postman\'a bu adresi yapıştır
+                          </label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <code style={{ flex: 1, background: 'rgba(0,0,0,0.3)', padding: '10px 14px', borderRadius: '8px', fontSize: '0.78rem', wordBreak: 'break-all', color: '#c7d2fe' }}>
+                              POST http://localhost:5000/api/webhook/{newTriggerData.webhook_token}
+                            </code>
+                            <button type="button" className="icon-btn" title="Kopyala" onClick={() => { navigator.clipboard.writeText(`http://localhost:5000/api/webhook/${newTriggerData.webhook_token}`); }}>
+                              <Copy size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeTriggerTab === 'event' && newTriggerData.connectorId === 'telegram' && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
+                          <div className="form-group">
+                            <label>Anahtar Kelime Filtresi <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>(opsiyonel)</span></label>
+                            <input
+                              type="text" className="form-control" placeholder="Örn: /baslat veya fatura"
+                              value={newTriggerData.keyword || ''} onChange={e => setNewTriggerData({ ...newTriggerData, keyword: e.target.value })}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>Chat ID Filtresi <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>(opsiyonel)</span></label>
+                            <input
+                              type="text" className="form-control" placeholder="Sadece bu sohbetten tetikle"
+                              value={newTriggerData.chat_id || ''} onChange={e => setNewTriggerData({ ...newTriggerData, chat_id: e.target.value })}
+                            />
                           </div>
                         </div>
                       )}
@@ -582,21 +624,6 @@ function App() {
                         </div>
                       </div>
 
-                      {activeTriggerTab === 'api' && (
-                        <div className="form-group">
-                          <label>Method</label>
-                          <select
-                            className="form-control"
-                            value={newTriggerData.method}
-                            onChange={e => setNewTriggerData({ ...newTriggerData, method: e.target.value })}
-                          >
-                            <option value="GET">GET</option>
-                            <option value="POST">POST</option>
-                            <option value="PUT">PUT</option>
-                            <option value="DELETE">DELETE</option>
-                          </select>
-                        </div>
-                      )}
 
                       <div style={{ marginTop: '24px', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                         <button className="btn" onClick={() => setShowAddForm(false)}>İptal</button>
@@ -609,11 +636,11 @@ function App() {
                 ) : (
                   <>
                     <div className="trigger-list">
-                      {triggers.filter(t => t.type === activeTriggerTab).map(trigger => (
+                      {triggers.filter(t => t.type === 'event').map(trigger => (
                         <div key={trigger.id} className="list-item fade-in" style={{ marginBottom: '12px', opacity: trigger.enabled ? 1 : 0.6, background: trigger.enabled ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.01)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
                             <div style={{ padding: '10px', borderRadius: '10px', background: trigger.enabled ? 'rgba(237, 94, 118, 0.1)' : 'rgba(255,255,255,0.05)', color: trigger.enabled ? 'var(--primary)' : 'var(--text-dim)' }}>
-                              {trigger.type === 'api' ? <Zap size={20} /> : <Activity size={20} />}
+                              <Activity size={20} />
                             </div>
                             <div className="item-info">
                               <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -621,8 +648,21 @@ function App() {
                                 {!trigger.enabled && <span style={{ fontSize: '0.65rem', background: 'var(--text-dim)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>PASİF</span>}
                               </h3>
                               <p style={{ fontSize: '0.8rem' }}>
-                                {trigger.type === 'api' && `${trigger.method} • ${trigger.robotName} • ${trigger.processName}`}
-                                {trigger.type === 'event' && (
+                                {trigger.type === 'event' && trigger.connectorId === 'webhook' ? (
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                    <strong>WEBHOOK</strong> (POST) → {trigger.robotName} • {trigger.processName}
+                                    {trigger.webhook_token && (
+                                      <button
+                                        className="icon-btn"
+                                        style={{ fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#818cf8', padding: '2px 8px', background: 'rgba(99,102,241,0.1)', borderRadius: '6px' }}
+                                        title="Webhook URL'yi Kopyala"
+                                        onClick={() => navigator.clipboard.writeText(`http://localhost:5000/api/webhook/${trigger.webhook_token}`)}
+                                      >
+                                        <Copy size={11} /> URL Kopyala
+                                      </button>
+                                    )}
+                                  </span>
+                                ) : (
                                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <strong>{trigger.connectorId?.toUpperCase()}</strong> ({trigger.event}) • <strong>{trigger.interval} dk</strong>
                                     <ArrowRight size={10} />
@@ -652,10 +692,10 @@ function App() {
                         </div>
                       ))}
 
-                      {triggers.filter(t => t.type === activeTriggerTab).length === 0 && (
+                      {triggers.filter(t => t.type === 'event').length === 0 && (
                         <div style={{ padding: '40px', textAlign: 'center', border: '2px dashed var(--border)', borderRadius: '20px' }}>
-                          <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>Henüz bir {activeTriggerTab === 'api' ? 'API' : 'Event'} Trigger tanımlanmamış.</p>
-                          {activeTriggerTab === 'api' ? <Zap size={48} color="var(--border)" /> : <Activity size={48} color="var(--border)" />}
+                          <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>Henüz bir Event Trigger tanımlanmamış.</p>
+                          <Activity size={48} color="var(--border)" />
                         </div>
                       )}
                     </div>

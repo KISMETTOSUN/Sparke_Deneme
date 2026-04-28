@@ -50,6 +50,11 @@ function ConnectionsView() {
         { id: 'password', label: 'Şifre', type: 'password', placeholder: 'xxxx', icon: <Key size={18} /> },
         { id: 'api_url', label: 'API Adresi', type: 'text', placeholder: 'https://api.weatherstack.com/...', icon: <Server size={18} /> }
       ]
+    },
+    {
+      id: 'telegram', name: 'Telegram Bot', icon: <Send size={24} />, fields: [
+        { id: 'bot_token', label: 'Bot Token (BotFather\'dan alın)', type: 'password', placeholder: '123456789:AAF...', icon: <Key size={18} /> }
+      ]
     }
   ];
 

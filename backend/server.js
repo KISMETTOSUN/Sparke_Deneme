@@ -19,19 +19,23 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const db = mysql.createConnection({
+const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
-    database: process.env.DB_NAME
+    database: process.env.DB_NAME,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
-db.connect((err) => {
+db.getConnection((err, connection) => {
     if (err) {
         console.error('Error connecting to MySQL:', err);
         return;
     }
-    console.log('Connected to MySQL database.');
+    console.log('Connected to MySQL database (pool ready).');
+    connection.release();
 });
 
 // --- Middleware ---
@@ -937,6 +941,139 @@ const checkFileTriggers = async () => {
 };
 
 setInterval(checkFileTriggers, 30000);
+
+// --- Telegram Trigger Worker ---
+const telegramOffsets = new Map(); // trigger_id -> last processed update_id
+
+const checkTelegramTriggers = async () => {
+    db.query('SELECT * FROM triggers WHERE type = "event" AND enabled = 1', (err, results) => {
+        if (err || !results || results.length === 0) return;
+
+        for (const trigger of results) {
+            let config;
+            try { config = JSON.parse(trigger.config); } catch (e) { continue; }
+            if (config.connectorId !== 'telegram') continue;
+
+            db.query('SELECT config FROM external_connections WHERE app_name = "telegram" LIMIT 1', async (connErr, connResults) => {
+                if (connErr || !connResults || connResults.length === 0) {
+                    logTriggerEvent(trigger.id, 'Telegram bağlantı ayarları bulunamadı. Bağlantılar sayfasından Bot Token girin.', 'ERROR');
+                    return;
+                }
+
+                let tConfig;
+                try {
+                    tConfig = JSON.parse(connResults[0].config);
+                    if (tConfig.bot_token) tConfig.bot_token = decrypt(tConfig.bot_token);
+                } catch (e) { return; }
+
+                if (!tConfig.bot_token) {
+                    logTriggerEvent(trigger.id, 'Telegram Bot Token eksik', 'ERROR');
+                    return;
+                }
+
+                const offset = telegramOffsets.get(trigger.id) || 0;
+
+                try {
+                    const url = `https://api.telegram.org/bot${tConfig.bot_token}/getUpdates?offset=${offset}&timeout=0&limit=10`;
+                    const res = await fetch(url);
+                    const data = await res.json();
+
+                    if (!data.ok || !data.result || data.result.length === 0) return;
+
+                    for (const update of data.result) {
+                        const newOffset = update.update_id + 1;
+                        const message = update.message || update.channel_post;
+
+                        if (!message) {
+                            telegramOffsets.set(trigger.id, newOffset);
+                            continue;
+                        }
+
+                        const text = (message.text || '').trim();
+                        const chatId = message.chat?.id?.toString();
+                        const senderName = message.from?.first_name || message.from?.username || 'Bilinmeyen';
+                        const keyword = (config.keyword || '').trim().toLowerCase();
+                        const filterChatId = (config.chat_id || '').trim();
+
+                        // Chat ID filtresi
+                        if (filterChatId && chatId !== filterChatId) {
+                            telegramOffsets.set(trigger.id, newOffset);
+                            continue;
+                        }
+
+                        // Keyword filtresi
+                        if (keyword && !text.toLowerCase().includes(keyword)) {
+                            telegramOffsets.set(trigger.id, newOffset);
+                            continue;
+                        }
+
+                        console.log(`[Telegram] Yeni mesaj (${trigger.name}): "${text}" from ${senderName} (chat: ${chatId})`);
+                        logTriggerEvent(trigger.id, `📩 Telegram mesajı: "${text}" (${senderName}) → Robot tetikleniyor.`, 'INFO');
+
+                        telegramOffsets.set(trigger.id, newOffset);
+                        await triggerUiPathFromEvent(trigger.user_id, trigger);
+                    }
+                } catch (e) {
+                    console.error(`[Telegram] API Hatası (${trigger.name}):`, e.message);
+                    logTriggerEvent(trigger.id, `Telegram API Hatası: ${e.message}`, 'ERROR');
+                }
+            });
+        }
+    });
+};
+
+// Poll every 5 seconds for near-instant response
+setInterval(checkTelegramTriggers, 5000);
+
+// =====================================================
+// POST /api/webhook/:token — Incoming Webhook Trigger
+// Postman veya herhangi bir sistemden POST gelince
+// eşleşen trigger'ı bulup UiPath'i tetikler.
+// =====================================================
+app.post('/api/webhook/:token', async (req, res) => {
+    const { token } = req.params;
+    const body = req.body || {};
+
+    db.query('SELECT * FROM triggers WHERE enabled = 1', async (err, results) => {
+        if (err) return res.status(500).json({ error: 'Veritabanı hatası', detail: err.message });
+
+        // Token ile eşleşen trigger'ı bul
+        let foundTrigger = null;
+        for (const t of results) {
+            try {
+                const cfg = JSON.parse(t.config || '{}');
+                if (cfg.webhook_token === token) { foundTrigger = t; break; }
+            } catch (e) { continue; }
+        }
+
+        if (!foundTrigger) {
+            return res.status(404).json({
+                success: false,
+                error: 'Webhook bulunamadı veya trigger pasif durumda.',
+                hint: 'Token doğru mu? Trigger aktif mi?'
+            });
+        }
+
+        try {
+            const bodyPreview = JSON.stringify(body).substring(0, 200);
+            console.log(`[Webhook] "${foundTrigger.name}" tetiklendi. Body: ${bodyPreview}`);
+            logTriggerEvent(foundTrigger.id, `📨 Webhook tetiklendi. Gelen veri: ${bodyPreview}`, 'INFO');
+
+            await triggerUiPathFromEvent(foundTrigger.user_id, foundTrigger);
+
+            res.json({
+                success: true,
+                message: `"${foundTrigger.name}" başarıyla tetiklendi.`,
+                trigger: foundTrigger.name,
+                triggered_at: new Date().toISOString()
+            });
+        } catch (e) {
+            console.error(`[Webhook] Tetikleme hatası (${foundTrigger.name}):`, e.message);
+            logTriggerEvent(foundTrigger.id, `Webhook tetikleme hatası: ${e.message}`, 'ERROR');
+            res.status(500).json({ success: false, error: e.message });
+        }
+    });
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

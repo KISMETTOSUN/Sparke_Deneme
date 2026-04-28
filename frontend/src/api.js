@@ -79,7 +79,27 @@ export const saveExternalConnection = async (type, data) => {
     return response.data;
 };
 
+<<<<<<< HEAD
 export const deleteExternalConnection = async (type) => {
     const response = await axios.delete(`${API_URL}/connections/${type}`);
+=======
+export const fetchTriggers = async () => {
+    const response = await axios.get(`${API_URL}/triggers`);
+    return response.data;
+};
+
+export const saveTrigger = async (data) => {
+    const response = await axios.post(`${API_URL}/triggers`, data);
+    return response.data;
+};
+
+export const deleteTrigger = async (id) => {
+    const response = await axios.delete(`${API_URL}/triggers/${id}`);
+    return response.data;
+};
+
+export const fetchTriggerLogs = async () => {
+    const response = await axios.get(`${API_URL}/trigger-logs`);
+>>>>>>> da49def (Fix triggers and add event configurations)
     return response.data;
 };

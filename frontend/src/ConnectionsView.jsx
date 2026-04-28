@@ -1,25 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { 
+<<<<<<< HEAD
   Save, Loader2, Clock, CheckCircle, AlertCircle, X, 
   ChevronRight, Check, Mail, Database, FileText, Trash2 
 } from 'lucide-react';
 import { fetchConnections, fetchConnectionConfig, saveExternalConnection, deleteExternalConnection, fetchConfig } from './api';
+=======
+  Save, Loader2, CheckCircle, AlertCircle, X, 
+  ChevronRight, Check, Mail, Database, FileText,
+  Shield, Key, User, Globe, Server
+} from 'lucide-react';
+import { fetchConnections, saveExternalConnection, fetchConnectionConfig } from './api';
+>>>>>>> da49def (Fix triggers and add event configurations)
 import './App.css';
 
 function ConnectionsView() {
-  const [activeModal, setActiveModal] = useState(null);
+  const [selectedApp, setSelectedApp] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [connections, setConnections] = useState([]);
   const [formFeedback, setFormFeedback] = useState({ type: null, message: '' });
 
-  // Specific Forms state
-  const [gmailForm, setGmailForm] = useState({ email: '', app_password: '' });
-  const [notionForm, setNotionForm] = useState({ token: '', database_id: '' });
-  const [influxForm, setInfluxForm] = useState({ url: '', token: '', organization: '', bucket: '' });
+  // Dynamic form state
+  const [formData, setFormData] = useState({});
 
   const apps = [
+<<<<<<< HEAD
     { 
       id: 'gmail', 
       name: 'Gmail', 
@@ -59,6 +66,22 @@ function ConnectionsView() {
       bgColor: '#000000',
       textColor: 'white'
     }
+=======
+    { id: 'gmail', name: 'Gmail', icon: <Mail size={24} />, fields: [
+      { id: 'email', label: 'Gmail Adresi', type: 'email', placeholder: 'adiniz@gmail.com', icon: <User size={18}/> },
+      { id: 'app_password', label: 'Uygulama Şifresi (Gerekli)', type: 'password', placeholder: 'xxxx xxxx xxxx xxxx', icon: <Key size={18}/> }
+    ]},
+    { id: 'influxdb', name: 'InfluxDB', icon: <Database size={24} />, fields: [
+      { id: 'url', label: 'Sunucu URL', type: 'text', placeholder: 'https://...', icon: <Globe size={18}/> },
+      { id: 'token', label: 'API Token', type: 'password', placeholder: 'token...', icon: <Shield size={18}/> },
+      { id: 'organization', label: 'Organization', type: 'text', placeholder: 'Org Name', icon: <Server size={18}/> },
+      { id: 'bucket', label: 'Bucket', type: 'text', placeholder: 'Bucket Name', icon: <FileText size={18}/> }
+    ]},
+    { id: 'notion', name: 'Notion', icon: <FileText size={24} />, fields: [
+      { id: 'token', label: 'Integration Token', type: 'password', placeholder: 'secret_...', icon: <Key size={18}/> },
+      { id: 'database_id', label: 'Database ID', type: 'text', placeholder: 'Database identifier', icon: <Database size={18}/> }
+    ]}
+>>>>>>> da49def (Fix triggers and add event configurations)
   ];
 
   useEffect(() => {
@@ -70,17 +93,6 @@ function ConnectionsView() {
     try {
       const connData = await fetchConnections();
       setConnections(connData || []);
-
-      // Pre-load InfluxDB from config_seeme as well if available
-      const influxData = await fetchConfig('seeme');
-      if (influxData) {
-        setInfluxForm({
-          url: influxData.url || '',
-          token: influxData.token || '',
-          organization: influxData.organization || '',
-          bucket: influxData.bucket || ''
-        });
-      }
     } catch (err) {
       console.error("Bağlantılar yüklenirken hata oluştu", err);
     } finally {
@@ -88,31 +100,43 @@ function ConnectionsView() {
     }
   };
 
-  const handleOpenModal = async (appId) => {
-    setActiveModal(appId);
+  const handleAppSelect = async (app) => {
+    setSelectedApp(app);
     setFormFeedback({ type: null, message: '' });
     
+    // Initialize form with existing config if available
     try {
-      const resp = await fetchConnectionConfig(appId);
+      const resp = await fetchConnectionConfig(app.id);
       if (resp && resp.config) {
-        if (appId === 'gmail') setGmailForm(resp.config);
-        if (appId === 'notion') setNotionForm(resp.config);
-        if (appId === 'influxdb') setInfluxForm(resp.config);
+        setFormData(resp.config);
+      } else {
+        // Reset form for new selection
+        const initialForm = {};
+        app.fields.forEach(f => initialForm[f.id] = '');
+        setFormData(initialForm);
       }
-    } catch (e) {}
+    } catch (e) {
+      const initialForm = {};
+      app.fields.forEach(f => initialForm[f.id] = '');
+      setFormData(initialForm);
+    }
   };
 
-  const handleSave = async (e, type) => {
+  const handleInputChange = (fieldId, value) => {
+    setFormData(prev => ({ ...prev, [fieldId]: value }));
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
+    if (!selectedApp) return;
+
     setSaving(true);
     setFormFeedback({ type: null, message: '' });
 
     try {
-      const formData = type === 'gmail' ? gmailForm : (type === 'notion' ? notionForm : influxForm);
-      await saveExternalConnection(type, formData);
-      setFormFeedback({ type: 'success', message: 'Bağlantı ayarları kaydedildi.' });
-      loadData(); // Refresh to update "Connected" status
-      setTimeout(() => setActiveModal(null), 1500);
+      await saveExternalConnection(selectedApp.id, formData);
+      setFormFeedback({ type: 'success', message: `${selectedApp.name} bağlantı ayarları kaydedildi.` });
+      loadData();
     } catch (err) {
       setFormFeedback({ type: 'error', message: err.response?.data?.error || 'Kaydedilirken hata oluştu.' });
     } finally {
@@ -120,6 +144,7 @@ function ConnectionsView() {
     }
   };
 
+<<<<<<< HEAD
   const handleDelete = async (type) => {
     if (!window.confirm('Bağlantıyı silmek istediğinize emin misiniz?')) return;
     setDeleting(true);
@@ -143,15 +168,9 @@ function ConnectionsView() {
   };
 
   // Sorting logic: Connected apps first
+=======
+>>>>>>> da49def (Fix triggers and add event configurations)
   const isConnected = (appId) => connections.some(c => c.app_name === appId);
-  
-  const sortedApps = [...apps].sort((a, b) => {
-    const aConn = isConnected(a.id);
-    const bConn = isConnected(b.id);
-    if (aConn && !bConn) return -1;
-    if (!aConn && bConn) return 1;
-    return 0;
-  });
 
   if (loading) {
     return (
@@ -162,6 +181,7 @@ function ConnectionsView() {
   }
 
   return (
+<<<<<<< HEAD
     <div className="integration-hub fade-in" style={{ padding: '40px 0' }}>
       <header>
         <h1 className="ifttt-header">Keşfet</h1>
@@ -188,25 +208,42 @@ function ConnectionsView() {
             
             <h3 className="ifttt-card-title">{app.name}</h3>
             <p className="ifttt-card-desc">{app.description}</p>
+=======
+    <div className="connections-view fade-in">
+      <div className="dashboard-sections" style={{ gridTemplateColumns: '1fr 1.5fr' }}>
+        
+        {/* Left Side: App Selection */}
+        <div className="section-card">
+          <div className="section-header">
+            <h2>Uygulama Seçimi</h2>
+            <p>Bağlantı ayarlarını düzenlemek istediğiniz servisi seçin.</p>
+>>>>>>> da49def (Fix triggers and add event configurations)
           </div>
-        ))}
-      </div>
-
-      {/* MODALS */}
-      {activeModal && (
-        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="modal-content section-card fade-in" style={{ width: '480px', maxWidth: '95%', padding: '32px', position: 'relative' }}>
-            <button onClick={() => setActiveModal(null)} style={{ position: 'absolute', top: '24px', right: '24px', background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}>
-              <X size={20} />
-            </button>
-
-            <h3 style={{ marginBottom: '24px' }}>{apps.find(a => a.id === activeModal).name} Bağlantısı</h3>
-
-            {formFeedback.type && (
-              <div style={{ padding: '12px', marginBottom: '20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px', background: formFeedback.type === 'success' ? '#dcfce3' : '#fee2e2', color: formFeedback.type === 'success' ? '#166534' : '#991b1b' }}>
-                {formFeedback.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
-                {formFeedback.message}
+          <div className="list-container">
+            {apps.map(app => (
+              <div 
+                key={app.id} 
+                className={`list-item ${selectedApp?.id === app.id ? 'active-item' : ''}`}
+                onClick={() => handleAppSelect(app)}
+                style={{ cursor: 'pointer', border: selectedApp?.id === app.id ? '1px solid var(--primary)' : '1px solid transparent' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ 
+                    padding: '10px', 
+                    borderRadius: '10px', 
+                    background: selectedApp?.id === app.id ? 'var(--primary)' : 'var(--border)',
+                    color: selectedApp?.id === app.id ? 'white' : 'var(--text-main)'
+                  }}>
+                    {app.icon}
+                  </div>
+                  <div className="item-info">
+                    <h3>{app.name}</h3>
+                    <p>{isConnected(app.id) ? 'Bağlantı Aktif' : 'Yapılandırılmamış'}</p>
+                  </div>
+                </div>
+                {isConnected(app.id) && <CheckCircle size={18} color="var(--success)" />}
               </div>
+<<<<<<< HEAD
             )}
 
             <form onSubmit={(e) => handleSave(e, activeModal)}>
@@ -249,9 +286,93 @@ function ConnectionsView() {
                 </div>
               </div>
             </form>
+=======
+            ))}
+>>>>>>> da49def (Fix triggers and add event configurations)
           </div>
         </div>
-      )}
+
+        {/* Right Side: Configuration Form */}
+        <div className="section-card">
+          {!selectedApp ? (
+            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+              <Globe size={48} style={{ opacity: 0.2, marginBottom: '16px' }} />
+              <p>Ayarları görüntülemek için soldan bir uygulama seçin.</p>
+            </div>
+          ) : (
+            <div className="fade-in">
+              <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <h2>{selectedApp.name} Ayarları</h2>
+                  <p>Bağlantı için gerekli kimlik bilgilerini ve API detaylarını tanımlayın.</p>
+                </div>
+                <div className={`badge ${isConnected(selectedApp.id) ? 'success' : 'warning'}`} style={{ 
+                  padding: '6px 12px', 
+                  borderRadius: '20px', 
+                  fontSize: '0.75rem', 
+                  fontWeight: 600,
+                  background: isConnected(selectedApp.id) ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                  color: isConnected(selectedApp.id) ? 'var(--success)' : 'var(--running)'
+                }}>
+                  {isConnected(selectedApp.id) ? 'BAĞLI' : 'BEKLEMEDE'}
+                </div>
+              </div>
+
+              {formFeedback.type && (
+                <div style={{ 
+                  padding: '12px 16px', 
+                  marginBottom: '24px', 
+                  borderRadius: '12px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '10px',
+                  background: formFeedback.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                  color: formFeedback.type === 'success' ? '#10b981' : '#ef4444',
+                  fontSize: '0.9rem'
+                }}>
+                  {formFeedback.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+                  {formFeedback.message}
+                </div>
+              )}
+
+              <form onSubmit={handleSave} className="form-layout" style={{ maxWidth: '100%' }}>
+                {selectedApp.fields.map(field => (
+                  <div key={field.id} className="form-group">
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {field.icon} {field.label}
+                    </label>
+                    <input 
+                      type={field.type} 
+                      className="form-control"
+                      value={formData[field.id] || ''}
+                      onChange={(e) => handleInputChange(field.id, e.target.value)}
+                      placeholder={field.placeholder}
+                      required={field.id !== 'database_id'} // Notion'da database_id opsiyonel olabilir demiştik
+                    />
+                  </div>
+                ))}
+
+                <div style={{ marginTop: '32px', display: 'flex', gap: '12px' }}>
+                  <button type="submit" className="btn btn-primary" disabled={saving} style={{ padding: '12px 24px', flex: 1, justifyContent: 'center' }}>
+                    {saving ? <Loader2 className="spin" size={18} /> : <><Save size={18} /> Ayarları Kaydet</>}
+                  </button>
+                  <button type="button" className="btn" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }} onClick={() => handleAppSelect(selectedApp)}>
+                    Sıfırla
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .list-item.active-item {
+          background: rgba(237, 94, 118, 0.05);
+        }
+        .badge.success { color: var(--success); }
+        .badge.warning { color: var(--running); }
+      `}} />
     </div>
   );
 }

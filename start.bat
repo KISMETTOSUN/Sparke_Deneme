@@ -1,11 +1,14 @@
 @echo off
-echo Sparke Projesi Baslatiliyor...
+echo Sparke Baslatiliyor...
 
-:: Backend'i baslat
-start cmd /k "echo Backend Calistiriliyor... && cd backend && npm start"
+cd backend
+start /min cmd /c "npm start"
 
-:: Frontend'i baslat
-start cmd /k "echo Frontend Calistiriliyor... && cd frontend && npm run dev"
+cd ../frontend
+start /min cmd /c "npm run dev"
+
+timeout /t 2 /nobreak > nul
+start http://localhost:3000
 
 echo.
 echo Sunucular ayri pencerelerde acildi. 

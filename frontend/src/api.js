@@ -78,3 +78,8 @@ export const saveExternalConnection = async (type, data) => {
     const response = await axios.post(`${API_URL}/connections/${type}`, data);
     return response.data;
 };
+
+export const deleteExternalConnection = async (type) => {
+    const response = await axios.delete(`${API_URL}/connections/${type}`);
+    return response.data;
+};

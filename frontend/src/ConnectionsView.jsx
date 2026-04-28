@@ -1,37 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Save, Loader2, Clock, CheckCircle, AlertCircle, X, 
-  ChevronRight, Check, Mail, Database, FileText 
+  ChevronRight, Check, Mail, Database, FileText, Trash2 
 } from 'lucide-react';
-import { fetchConnections, fetchConnectionConfig, saveExternalConnection, fetchConfig } from './api';
+import { fetchConnections, fetchConnectionConfig, saveExternalConnection, deleteExternalConnection, fetchConfig } from './api';
 import './App.css';
-
-// SVG Logos
-const GmailLogo = () => (
-  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M20 4H4C2.9 4 2.01 4.9 2.01 6L2 18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4ZM20 18H4V8L12 13L20 8V18ZM12 11L4 6H20L12 11Z" fill="#EA4335"/>
-  </svg>
-);
-
-const NotionLogo = () => (
-  <svg width="40" height="40" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M256 24.2353V231.765C256 245.149 245.149 256 231.765 256H24.2353C10.8509 256 0 245.149 0 231.765V24.2353C0 10.8509 10.8509 0 24.2353 0H231.765C245.149 0 256 10.8509 256 24.2353Z" fill="white"/>
-    <path d="M198.374 207.283H176.626L166.726 195.309L89.5445 194.269V64.0624H103.447L181.543 149.957L190.473 162.24H192.454L192.454 48.7174H214.202V187.218L214.202 195.309H198.374V207.283ZM41.7978 187.218V64.0624H52.7051L85.4022 66.115H85.4022L85.4022 110.158V187.218H74.5029L41.7978 187.218ZM41.7978 195.309H85.4022V207.283H41.7978V195.309Z" fill="black"/>
-  </svg>
-);
-
-const InfluxLogo = () => (
-  <svg width="40" height="40" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M128 12L228.462 70V186L128 244L27.5385 186V70L128 12Z" fill="#1C182A"/>
-    <path d="M128 42L199.013 83V173L128 214L56.9872 173V83L128 42Z" fill="#22ADD8"/>
-    <path d="M128 65L178.66 94.25V161.75L128 191L77.3397 161.75V94.25L128 65Z" fill="#9358F7"/>
-  </svg>
-);
 
 function ConnectionsView() {
   const [activeModal, setActiveModal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [connections, setConnections] = useState([]);
   const [formFeedback, setFormFeedback] = useState({ type: null, message: '' });
 
@@ -41,9 +20,45 @@ function ConnectionsView() {
   const [influxForm, setInfluxForm] = useState({ url: '', token: '', organization: '', bucket: '' });
 
   const apps = [
-    { id: 'gmail', name: 'Gmail', description: 'E-posta servisleri üzerinden bildirim ve veri akışı sağlar.', logo: <GmailLogo /> },
-    { id: 'influxdb', name: 'InfluxDB', description: 'Zaman serisi veritabanı entegrasyonu.', logo: <InfluxLogo /> },
-    { id: 'notion', name: 'Notion', description: 'Notlar, veritabanları ve iş akışı yönetimi entegrasyonu.', logo: <NotionLogo /> }
+    { 
+      id: 'gmail', 
+      name: 'Gmail', 
+      description: 'E-posta servisleri üzerinden bildirim ve veri akışı sağlar.', 
+      logo: (color = "white") => (
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 4H4C2.9 4 2.01 4.9 2.01 6L2 18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4ZM20 18H4V8L12 13L20 8V18ZM12 11L4 6H20L12 11Z" fill={color}/>
+        </svg>
+      ),
+      bgColor: '#EA4335',
+      textColor: 'white'
+    },
+    { 
+      id: 'influxdb', 
+      name: 'InfluxDB', 
+      description: 'Zaman serisi veritabanı entegrasyonu.', 
+      logo: (color = "white") => (
+        <svg width="48" height="48" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M128 12L228.462 70V186L128 244L27.5385 186V70L128 12Z" fill="rgba(255,255,255,0.2)"/>
+          <path d="M128 42L199.013 83V173L128 214L56.9872 173V83L128 42Z" fill="white"/>
+          <path d="M128 65L178.66 94.25V161.75L128 191L77.3397 161.75V94.25L128 65Z" fill="rgba(255,255,255,0.5)"/>
+        </svg>
+      ),
+      bgColor: '#22ADD8',
+      textColor: 'white'
+    },
+    { 
+      id: 'notion', 
+      name: 'Notion', 
+      description: 'Notlar, veritabanları ve iş akışı yönetimi entegrasyonu.', 
+      logo: (color = "white") => (
+        <svg width="48" height="48" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M256 24.2353V231.765C256 245.149 245.149 256 231.765 256H24.2353C10.8509 256 0 245.149 0 231.765V24.2353C0 10.8509 10.8509 0 24.2353 0H231.765C245.149 0 256 10.8509 256 24.2353Z" fill="white"/>
+          <path d="M198.374 207.283H176.626L166.726 195.309L89.5445 194.269V64.0624H103.447L181.543 149.957L190.473 162.24H192.454L192.454 48.7174H214.202V187.218L214.202 195.309H198.374V207.283ZM41.7978 187.218V64.0624H52.7051L85.4022 66.115H85.4022L85.4022 110.158V187.218H74.5029L41.7978 187.218ZM41.7978 195.309H85.4022V207.283H41.7978V195.309Z" fill="black"/>
+        </svg>
+      ),
+      bgColor: '#000000',
+      textColor: 'white'
+    }
   ];
 
   useEffect(() => {
@@ -99,9 +114,31 @@ function ConnectionsView() {
       loadData(); // Refresh to update "Connected" status
       setTimeout(() => setActiveModal(null), 1500);
     } catch (err) {
-      setFormFeedback({ type: 'error', message: 'Kaydedilirken hata oluştu.' });
+      setFormFeedback({ type: 'error', message: err.response?.data?.error || 'Kaydedilirken hata oluştu.' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async (type) => {
+    if (!window.confirm('Bağlantıyı silmek istediğinize emin misiniz?')) return;
+    setDeleting(true);
+    setFormFeedback({ type: null, message: '' });
+
+    try {
+      await deleteExternalConnection(type);
+      setFormFeedback({ type: 'success', message: 'Bağlantı silindi.' });
+      loadData();
+      
+      if (type === 'gmail') setGmailForm({ email: '', app_password: '' });
+      if (type === 'notion') setNotionForm({ token: '', database_id: '' });
+      if (type === 'influxdb') setInfluxForm({ url: '', token: '', organization: '', bucket: '' });
+      
+      setTimeout(() => setActiveModal(null), 1500);
+    } catch (err) {
+      setFormFeedback({ type: 'error', message: 'Silinirken hata oluştu.' });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -125,36 +162,32 @@ function ConnectionsView() {
   }
 
   return (
-    <div className="integration-hub fade-in">
-      <header style={{ marginBottom: '32px' }}>
-        <h2 style={{ marginBottom: '8px' }}>Bağlantılar Merkezi</h2>
-        <p className="text-muted">Dış sistem entegrasyonlarını buradan yönetin ve bağlı servislerinizi en üstte görün.</p>
+    <div className="integration-hub fade-in" style={{ padding: '40px 0' }}>
+      <header>
+        <h1 className="ifttt-header">Keşfet</h1>
+        <p className="ifttt-subheader">Sparke'ı favori servislerinize bağlayarak gücünü artırın. Bağlı servisleriniz otomatik olarak en üstte listelenir.</p>
       </header>
 
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+      <div className="ifttt-grid">
         {sortedApps.map(app => (
-          <div key={app.id} className="stat-card interaction-card" onClick={() => handleOpenModal(app.id)} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ background: '#222', padding: '12px', borderRadius: '12px' }}>
-                  {app.logo}
-                </div>
-                {isConnected(app.id) && (
-                  <div className="badge success-status" style={{ display: 'flex', gap: '4px', alignItems: 'center', background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80' }}>
-                    <Check size={12}/> Bağlı
-                  </div>
-                )}
+          <div 
+            key={app.id} 
+            className="ifttt-card" 
+            onClick={() => handleOpenModal(app.id)} 
+            style={{ backgroundColor: app.bgColor, color: app.textColor }}
+          >
+            {isConnected(app.id) && (
+              <div className="ifttt-badge">
+                <Check size={14}/> Bağlı
               </div>
-              
-              <div style={{ flexGrow: 1 }}>
-                <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>{app.name}</h3>
-                <p className="text-muted" style={{ fontSize: '0.9rem', lineHeight: '1.4' }}>{app.description}</p>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary)', fontWeight: '500', fontSize: '0.9rem', marginTop: '12px' }}>
-                 Yapılandır <ChevronRight size={16} />
-              </div>
+            )}
+            
+            <div className="ifttt-card-logo">
+              {app.logo(app.textColor)}
             </div>
+            
+            <h3 className="ifttt-card-title">{app.name}</h3>
+            <p className="ifttt-card-desc">{app.description}</p>
           </div>
         ))}
       </div>
@@ -200,11 +233,20 @@ function ConnectionsView() {
                 </>
               )}
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
-                <button type="button" className="btn" onClick={() => setActiveModal(null)} style={{ background: 'transparent' }}>İptal</button>
-                <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? <Loader2 className="spin" size={16} /> : <Save size={16} />} Bağlan
-                </button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
+                <div>
+                  {isConnected(activeModal) && (
+                    <button type="button" className="btn" onClick={() => handleDelete(activeModal)} disabled={deleting || saving} style={{ background: '#fee2e2', color: '#991b1b' }}>
+                      {deleting ? <Loader2 className="spin" size={16} /> : <Trash2 size={16} />} Sil
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button type="button" className="btn" onClick={() => setActiveModal(null)} style={{ background: 'transparent' }}>İptal</button>
+                  <button type="submit" className="btn btn-primary" disabled={saving || deleting}>
+                    {saving ? <Loader2 className="spin" size={16} /> : <Save size={16} />} Bağlan
+                  </button>
+                </div>
               </div>
             </form>
           </div>

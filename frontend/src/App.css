@@ -365,3 +365,91 @@ body {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* IFTTT Inspired Design System */
+.ifttt-header {
+    font-size: 3.5rem;
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    margin-bottom: 12px;
+    color: #222;
+}
+
+.ifttt-subheader {
+    font-size: 1.1rem;
+    color: #666;
+    margin-bottom: 48px;
+    max-width: 600px;
+}
+
+.ifttt-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 24px;
+    width: 100%;
+}
+
+.ifttt-card {
+    aspect-ratio: 1 / 1.1;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    text-align: center;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+    cursor: pointer;
+    position: relative;
+    border: none;
+    color: white;
+}
+
+.ifttt-card:hover {
+    transform: scale(1.03);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+    z-index: 2;
+}
+
+.ifttt-card-logo {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 16px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ifttt-card-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 8px;
+}
+
+.ifttt-card-desc {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+.ifttt-badge {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #222;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+@media (max-width: 600px) {
+    .ifttt-header { font-size: 2.5rem; }
+    .ifttt-grid { grid-template-columns: 1fr; }
+}

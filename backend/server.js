@@ -282,10 +282,30 @@ app.get('/api/connections/:type', authenticateToken, (req, res) => {
 });
 
 // POST save/update connection
-app.post('/api/connections/:type', authenticateToken, (req, res) => {
+app.post('/api/connections/:type', authenticateToken, async (req, res) => {
     const appName = req.params.type;
     const config = req.body;
     
+    // --- Notion Validation ---
+    if (appName === 'notion') {
+        try {
+            const response = await fetch('https://api.notion.com/v1/users/me', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${config.token}`,
+                    'Notion-Version': '2022-06-28'
+                }
+            });
+            if (!response.ok) {
+                const errObj = await response.json().catch(() => ({}));
+                return res.status(400).json({ error: `Notion Doğrulama Başarısız: Lütfen Token'ı kontrol edin. (Detay: ${errObj.message || response.statusText})` });
+            }
+        } catch (err) {
+            return res.status(400).json({ error: `Notion ile iletişim kurulamadı: ${err.message}` });
+        }
+    }
+    // --- Validation End ---
+
     // Encrypt sensitive fields
     Object.keys(config).forEach(key => {
         if (key.toLowerCase().includes('password') || key.toLowerCase().includes('token') || key.toLowerCase().includes('secret')) {
@@ -300,6 +320,15 @@ app.post('/api/connections/:type', authenticateToken, (req, res) => {
     [req.user.id, appName, configStr, date, configStr, date], (err) => {
         if (err) return res.status(500).json(err);
         res.json({ message: 'Saved', last_update: date });
+    });
+});
+
+// DELETE connection
+app.delete('/api/connections/:type', authenticateToken, (req, res) => {
+    const appName = req.params.type;
+    db.query('DELETE FROM external_connections WHERE user_id = ? AND app_name = ?', [req.user.id, appName], (err, result) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: 'Bağlantı silindi' });
     });
 });
 

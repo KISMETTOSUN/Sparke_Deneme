@@ -516,12 +516,16 @@ app.post('/api/uipath/start-job', authenticateToken, (req, res) => {
 
 // --- Trigger Endpoints ---
 
-// GET triggers
 app.get('/api/triggers', authenticateToken, (req, res) => {
     db.query('SELECT * FROM triggers', (err, results) => {
         if (err) return res.status(500).json(err);
         const processed = results.map(t => {
-            try { return { ...t, ...(JSON.parse(t.config)) }; } catch (e) { return t; }
+            try { 
+                const parsed = JSON.parse(t.config);
+                // Ensure we don't have a double-nested config key
+                const { config: innerConfig, ...rest } = parsed;
+                return { ...t, ...rest, ...(typeof innerConfig === 'object' ? innerConfig : {}) }; 
+            } catch (e) { return t; }
         });
         res.json(processed);
     });
@@ -529,8 +533,9 @@ app.get('/api/triggers', authenticateToken, (req, res) => {
 
 // POST save/update trigger
 app.post('/api/triggers', authenticateToken, (req, res) => {
-    const { id, name, type, enabled, ...config } = req.body;
-    const configStr = JSON.stringify(config);
+    const { id, name, type, enabled, config: existingConfig, ...rest } = req.body;
+    // If 'config' is in the body (from a previous GET), we ignore it and use the rest of the fields as the new config
+    const configStr = JSON.stringify(rest);
     const date = new Date().toISOString().slice(0, 19).replace('T', ' ');
     const userId = req.user?.id || 1; // Fallback to 1 for bypass mode
 
